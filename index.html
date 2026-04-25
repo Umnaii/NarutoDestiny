@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- SÉCURITÉ : CSP — autorise uniquement fonts.googleapis.com en ressource externe.
+     Aucun script inline tiers, aucune image externe, aucun frame. -->
+<meta http-equiv="Content-Security-Policy"
+  content="default-src 'self';
+           script-src 'unsafe-inline';
+           style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+           font-src https://fonts.gstatic.com;
+           img-src 'self' data:;
+           frame-ancestors 'none';">
+<title>Naruto Destiny Wheel</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --orange: #E8521A;
+    --orange-dark: #B83D0E;
+    --orange-light: #F97316;
+    --orange-glow: #FF6B2B;
+    --red: #CC1A1A;
+    --dark: #0A0A0F;
+    --dark2: #12121A;
+    --dark3: #1A1A25;
+    --panel: #16161F;
+    --panel2: #1E1E2C;
+    --text: #F0EAD6;
+    --text-muted: #8A8370;
+    --gold: #D4AF37;
+    --gold-light: #F0C94A;
+    --white: #FFFFFF;
+    --blue-accent: #3A7BD5;
+    --green-accent: #2ECC71;
+    --border: rgba(232,82,26,0.25);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background-color: var(--dark);
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 50% 0%, rgba(232,82,26,0.12) 0%, transparent 70%),
+      radial-gradient(ellipse 40% 60% at 10% 80%, rgba(100,50,20,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 60% at 90% 20%, rgba(50,80,180,0.05) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .bg-pattern {
+    position: fixed;
+    inset: 0;
+    opacity: 0.025;
+    background-image: repeating-linear-gradient(
+      45deg,
+      var(--orange) 0px,
+      var(--orange) 1px,
+      transparent 1px,
+      transparent 40px
+    );
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 20px 60px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* HEADER */
+  header {
+    text-align: center;
+    padding: 48px 20px 36px;
+    position: relative;
+  }
+
+  .header-emblem {
+    display: inline-block;
+    width: 64px;
+    height: 64px;
+    margin-bottom: 16px;
+  }
+
+  header h1 {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: clamp(28px, 5vw, 52px);
+    font-weight: 900;
+    color: var(--orange);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    line-height: 1.1;
+    text-shadow: 0 0 40px rgba(232,82,26,0.4), 0 2px 0 rgba(0,0,0,0.8);
+  }
+
+  header h1 span {
+    display: block;
+    font-size: 0.45em;
+    color: var(--gold);
+    letter-spacing: 0.3em;
+    font-weight: 700;
+    margin-top: 6px;
+    text-shadow: 0 0 20px rgba(212,175,55,0.5);
+  }
+
+  .header-line {
+    width: 200px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--orange), transparent);
+    margin: 20px auto 0;
+  }
+
+  /* INTRO */
+  .intro-text {
+    text-align: center;
+    font-size: 17px;
+    color: var(--text-muted);
+    max-width: 520px;
+    margin: 0 auto 44px;
+    line-height: 1.6;
+    font-weight: 500;
+  }
+
+  /* WHEELS GRID */
+  .wheels-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 24px;
+    margin-bottom: 40px;
+  }
+
+  /* WHEEL CARD */
+  .wheel-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    transition: border-color 0.3s, transform 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .wheel-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--orange), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .wheel-card.active::before { opacity: 1; }
+  .wheel-card.active {
+    border-color: rgba(232,82,26,0.5);
+  }
+
+  .wheel-card.done {
+    border-color: rgba(212,175,55,0.4);
+  }
+  .wheel-card.done::before {
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    opacity: 1;
+  }
+
+  .wheel-label {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    color: var(--orange);
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+
+  .wheel-number {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--dark3);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--orange);
+    flex-shrink: 0;
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+  }
+
+  /* CANVAS WHEEL */
+  .wheel-wrapper {
+    position: relative;
+    width: 180px;
+    height: 180px;
+  }
+
+  canvas.wheel {
+    width: 180px;
+    height: 180px;
+    display: block;
+  }
+
+  .wheel-pointer {
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-top: 22px solid var(--orange);
+    filter: drop-shadow(0 2px 4px rgba(232,82,26,0.6));
+    z-index: 10;
+  }
+
+  .wheel-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--dark);
+    border: 3px solid var(--orange);
+    box-shadow: 0 0 12px rgba(232,82,26,0.5);
+    z-index: 10;
+  }
+
+  /* RESULT BOX */
+  .result-box {
+    width: 100%;
+    min-height: 52px;
+    background: var(--dark3);
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.07);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 14px;
+    text-align: center;
+  }
+
+  .result-text {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.3;
+    transition: all 0.3s;
+  }
+
+  .result-text.revealed {
+    color: var(--gold-light);
+    font-size: 17px;
+  }
+
+  .result-placeholder {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  /* SPIN BUTTON */
+  .spin-btn {
+    width: 100%;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--orange-dark), var(--orange));
+    color: white;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .spin-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, var(--orange), var(--orange-light));
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(232,82,26,0.4);
+  }
+
+  .spin-btn:active:not(:disabled) {
+    transform: translateY(0) scale(0.98);
+  }
+
+  .spin-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .spin-btn.spinning {
+    background: linear-gradient(135deg, #444, #555);
+    animation: pulse-btn 0.8s ease-in-out infinite alternate;
+  }
+
+  @keyframes pulse-btn {
+    from { box-shadow: 0 0 10px rgba(255,255,255,0.1); }
+    to { box-shadow: 0 0 20px rgba(255,255,255,0.2); }
+  }
+
+  /* MAIN SPIN ALL BUTTON */
+  .spin-all-wrapper {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+
+  .spin-all-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    padding: 18px 48px;
+    border: none;
+    border-radius: 14px;
+    background: linear-gradient(135deg, var(--orange-dark), var(--orange), var(--orange-light));
+    color: white;
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: all 0.25s;
+    box-shadow: 0 8px 30px rgba(232,82,26,0.35);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .spin-all-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, transparent 30%, rgba(255,255,255,0.15) 50%, transparent 70%);
+    transform: translateX(-100%);
+    transition: transform 0.5s;
+  }
+
+  .spin-all-btn:hover::before { transform: translateX(100%); }
+
+  .spin-all-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(232,82,26,0.5);
+  }
+
+  .spin-all-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* DESTINY RESULT PANEL */
+  .destiny-panel {
+    background: var(--panel);
+    border: 1px solid rgba(212,175,55,0.3);
+    border-radius: 20px;
+    padding: 36px;
+    margin-top: 16px;
+    position: relative;
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.5s, transform 0.5s;
+  }
+
+  .destiny-panel.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .destiny-panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--gold), var(--orange), var(--gold), transparent);
+  }
+
+  .destiny-title {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 13px;
+    letter-spacing: 0.3em;
+    color: var(--gold);
+    text-transform: uppercase;
+    text-align: center;
+    margin-bottom: 28px;
+  }
+
+  .destiny-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+  }
+
+  .destiny-item {
+    background: var(--dark3);
+    border-radius: 12px;
+    padding: 16px 20px;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .destiny-item-label {
+    font-size: 11px;
+    color: var(--orange);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 6px;
+    font-family: 'Cinzel Decorative', serif;
+  }
+
+  .destiny-item-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--gold-light);
+    line-height: 1.2;
+  }
+
+  .destiny-item-sub {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    font-weight: 500;
+  }
+
+  .destiny-story {
+    margin-top: 24px;
+    padding: 20px 24px;
+    background: linear-gradient(135deg, rgba(232,82,26,0.08), rgba(212,175,55,0.06));
+    border-radius: 12px;
+    border: 1px solid rgba(232,82,26,0.15);
+    font-size: 16px;
+    line-height: 1.7;
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  /* RESET BTN */
+  .reset-btn {
+    display: block;
+    margin: 24px auto 0;
+    padding: 12px 36px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: transparent;
+    color: var(--text-muted);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .reset-btn:hover {
+    border-color: var(--orange);
+    color: var(--orange);
+    background: rgba(232,82,26,0.06);
+  }
+
+  /* SEAL SVG */
+  .konoha-leaf {
+    fill: var(--orange);
+    opacity: 0.9;
+  }
+
+  @keyframes spin-float {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-4px) rotate(180deg); }
+  }
+
+  .spinning-icon {
+    display: inline-block;
+    animation: spin-float 1s linear infinite;
+  }
+
+  /* responsive */
+  @media(max-width: 600px) {
+    .wheels-grid { grid-template-columns: 1fr 1fr; gap: 14px; }
+    .wheel-wrapper { width: 140px; height: 140px; }
+    canvas.wheel { width: 140px; height: 140px; }
+    .destiny-panel { padding: 24px 18px; }
+    .spin-all-btn { padding: 16px 28px; font-size: 13px; }
+  }
+  @media(max-width: 380px) {
+    .wheels-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="bg-pattern"></div>
+
+<div class="container">
+  <header>
+    <!-- Konoha leaf SVG emblem -->
+    <svg class="header-emblem" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="32" cy="32" r="30" stroke="#E8521A" stroke-width="1.5" opacity="0.4"/>
+      <circle cx="32" cy="32" r="24" stroke="#E8521A" stroke-width="0.8" opacity="0.2"/>
+      <!-- Stylized leaf/swirl shape -->
+      <path d="M32 8 C32 8, 50 18, 52 32 C54 46, 42 56, 32 56 C22 56, 10 46, 12 32 C14 18, 32 8, 32 8Z" fill="#E8521A" opacity="0.85"/>
+      <path d="M32 16 C32 16, 44 23, 45 32 C46 41, 38 48, 32 48 C26 48, 18 41, 19 32 C20 23, 32 16, 32 16Z" fill="#0A0A0F"/>
+      <path d="M32 12 C28 24, 20 28, 20 38 C20 44, 25 50, 32 52 C32 52, 32 32, 32 12Z" fill="#E8521A" opacity="0.5"/>
+      <circle cx="32" cy="32" r="4" fill="#E8521A"/>
+    </svg>
+
+    <h1>Naruto Destiny Wheel<span>Ton destin de ninja t'attend</span></h1>
+    <div class="header-line"></div>
+  </header>
+
+  <p class="intro-text">
+    Tourne les roues du destin et découvre ton aventure ninja. Chaque spin génère une histoire unique dans l'univers de Naruto.
+  </p>
+
+  <div class="wheels-grid" id="wheelsGrid">
+    <!-- Wheel 1: Période -->
+    <div class="wheel-card" id="card-0">
+      <div class="card-header">
+        <div class="wheel-number">I</div>
+        <div class="wheel-label">Période</div>
+      </div>
+      <div class="wheel-wrapper">
+        <div class="wheel-pointer"></div>
+        <canvas class="wheel" id="wheel-0" width="360" height="360"></canvas>
+        <div class="wheel-center"></div>
+      </div>
+      <div class="result-box">
+        <span class="result-placeholder" id="placeholder-0">En attente...</span>
+        <span class="result-text" id="result-0" style="display:none"></span>
+      </div>
+      <button class="spin-btn" id="btn-0" onclick="spinWheel(0)">⚡ Tourner</button>
+    </div>
+
+    <!-- Wheel 2: Village -->
+    <div class="wheel-card" id="card-1">
+      <div class="card-header">
+        <div class="wheel-number">II</div>
+        <div class="wheel-label">Village</div>
+      </div>
+      <div class="wheel-wrapper">
+        <div class="wheel-pointer"></div>
+        <canvas class="wheel" id="wheel-1" width="360" height="360"></canvas>
+        <div class="wheel-center"></div>
+      </div>
+      <div class="result-box">
+        <span class="result-placeholder" id="placeholder-1">En attente...</span>
+        <span class="result-text" id="result-1" style="display:none"></span>
+      </div>
+      <button class="spin-btn" id="btn-1" onclick="spinWheel(1)" disabled>⚡ Tourner</button>
+    </div>
+
+    <!-- Wheel 3: Starter -->
+    <div class="wheel-card" id="card-2">
+      <div class="card-header">
+        <div class="wheel-number">III</div>
+        <div class="wheel-label">Personnage</div>
+      </div>
+      <div class="wheel-wrapper">
+        <div class="wheel-pointer"></div>
+        <canvas class="wheel" id="wheel-2" width="360" height="360"></canvas>
+        <div class="wheel-center"></div>
+      </div>
+      <div class="result-box">
+        <span class="result-placeholder" id="placeholder-2">En attente...</span>
+        <span class="result-text" id="result-2" style="display:none"></span>
+      </div>
+      <button class="spin-btn" id="btn-2" onclick="spinWheel(2)" disabled>⚡ Tourner</button>
+    </div>
+
+    <!-- Wheel 4: Boss -->
+    <div class="wheel-card" id="card-3">
+      <div class="card-header">
+        <div class="wheel-number">IV</div>
+        <div class="wheel-label">Antagoniste</div>
+      </div>
+      <div class="wheel-wrapper">
+        <div class="wheel-pointer"></div>
+        <canvas class="wheel" id="wheel-3" width="360" height="360"></canvas>
+        <div class="wheel-center"></div>
+      </div>
+      <div class="result-box">
+        <span class="result-placeholder" id="placeholder-3">En attente...</span>
+        <span class="result-text" id="result-3" style="display:none"></span>
+      </div>
+      <button class="spin-btn" id="btn-3" onclick="spinWheel(3)" disabled>⚡ Tourner</button>
+    </div>
+  </div>
+
+  <div class="spin-all-wrapper">
+    <button class="spin-all-btn" id="spinAllBtn" onclick="spinAll()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/><polyline points="21 3 21 9 15 9"/></svg>
+      Révéler mon destin
+    </button>
+  </div>
+
+  <!-- Destiny result panel -->
+  <div class="destiny-panel" id="destinyPanel">
+    <div class="destiny-title">✦ Ton aventure ninja ✦</div>
+    <div class="destiny-grid" id="destinyGrid"></div>
+    <div class="destiny-story" id="destinyStory"></div>
+    <button class="reset-btn" onclick="resetAll()">↺ Nouveau destin</button>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// DATA
+// ============================================================
+const DATA = {
+  periodes: [
+    { label: "Naruto Classique", short: "Classique", color: "#2563EB", emoji: "📜", desc: "L'ère de l'Académie et des premières missions" },
+    { label: "Naruto Shippuden", short: "Shippuden", color: "#DC2626", emoji: "🔥", desc: "L'ère de l'Akatsuki et de la 4ème Guerre Ninja" },
+    { label: "The Last", short: "The Last", color: "#7C3AED", emoji: "🌙", desc: "Deux ans après la Grande Guerre" },
+    { label: "Boruto: Naruto Next Gen", short: "Boruto", color: "#059669", emoji: "⚡", desc: "L'ère de la prochaine génération" },
+    { label: "Prologue (Ère des Clans)", short: "Ère des Clans", color: "#D97706", emoji: "⚔️", desc: "Avant la fondation des villages" },
+  ],
+  villages: [
+    { label: "Konohagakure", short: "Konoha", color: "#16A34A", emoji: "🍃", symbol: "Feuille" },
+    { label: "Sunagakure", short: "Suna", color: "#D97706", emoji: "🏜️", symbol: "Vent" },
+    { label: "Kirigakure", short: "Kiri", color: "#0891B2", emoji: "🌊", symbol: "Eau" },
+    { label: "Kumogakure", short: "Kumo", color: "#7C3AED", emoji: "⚡", symbol: "Foudre" },
+    { label: "Iwagakure", short: "Iwa", color: "#78716C", emoji: "🪨", symbol: "Terre" },
+    { label: "Otogakure", short: "Oto", color: "#BE185D", emoji: "🎵", symbol: "Son" },
+    { label: "Takigakure", short: "Taki", color: "#0D9488", emoji: "💧", symbol: "Cascade" },
+  ],
+};
+
+// Starters per (periode, village)
+const STARTERS = {
+  "Classique-Konoha": ["Naruto Uzumaki","Sasuke Uchiha","Sakura Haruno","Rock Lee","Neji Hyûga","Hinata Hyûga"],
+  "Classique-Suna": ["Gaara","Kankuro","Temari"],
+  "Classique-Kiri": ["Zabuza Momochi (jeune)","Haku (jeune)"],
+  "Classique-Kumo": ["Killer B (jeune)","Yugito Nii (jeune)"],
+  "Classique-Iwa": ["Kurotsuchi (jeune)","Akatsuchi (jeune)"],
+  "Classique-Oto": ["Dosu Kinuta","Zaku Abumi","Kin Tsuchi"],
+  "Classique-Taki": ["Fuu (jeune)"],
+  "Shippuden-Konoha": ["Naruto Uzumaki (ado)","Sakura Haruno (ado)","Sai","Yamato","Kakashi Hatake"],
+  "Shippuden-Suna": ["Gaara (Kazekage)","Temari","Kankuro"],
+  "Shippuden-Kiri": ["Mei Terumi","Chojuro","Ao"],
+  "Shippuden-Kumo": ["Killer B","A (Raikage)","Yugito Nii"],
+  "Shippuden-Iwa": ["Onoki (Tsuchikage)","Kurotsuchi","Akatsuchi"],
+  "Shippuden-Oto": ["Kabuto Yakushi","Jugo","Suigetsu"],
+  "Shippuden-Taki": ["Fuu"],
+  "The Last-Konoha": ["Naruto Uzumaki (adulte)","Hinata Hyûga","Sakura Haruno","Sai","Shikamaru"],
+  "The Last-Suna": ["Gaara","Temari"],
+  "The Last-Kiri": ["Mei Terumi","Chojuro"],
+  "The Last-Kumo": ["Killer B","Omoi"],
+  "The Last-Iwa": ["Kurotsuchi"],
+  "The Last-Oto": ["Kabuto Yakushi"],
+  "The Last-Taki": ["Fuu"],
+  "Boruto-Konoha": ["Boruto Uzumaki","Sarada Uchiha","Mitsuki","Shikadai","Inojin","ChoCho"],
+  "Boruto-Suna": ["Shinki","Araya","Yodo"],
+  "Boruto-Kiri": ["Kagura Karatachi","Chojuro (Mizukage)"],
+  "Boruto-Kumo": ["Darui (Raikage)","Omoi"],
+  "Boruto-Iwa": ["Kurotsuchi (Tsuchikage)"],
+  "Boruto-Oto": ["Mitsuki (Oto origine)"],
+  "Boruto-Taki": ["Personnage inconnu de Taki"],
+  "Ère des Clans-Konoha": ["Hashirama Senju","Tobirama Senju","Madara Uchiha (jeune)"],
+  "Ère des Clans-Suna": ["Chef du clan du Sable"],
+  "Ère des Clans-Kiri": ["Premier Mizukage"],
+  "Ère des Clans-Kumo": ["Premier Raikage"],
+  "Ère des Clans-Iwa": ["Premier Tsuchikage"],
+  "Ère des Clans-Oto": ["Guerrier errant"],
+  "Ère des Clans-Taki": ["Hashirama Senju (fondateur)"],
+};
+
+// Antagonists per period
+const ANTAGONISTS = {
+  "Classique": ["Orochimaru","Zabuza Momochi","Kabuto Yakushi (espion)","Gato","Mizuki","Haku","Gaara (antagoniste)","Les frères Demon"],
+  "Shippuden": ["Pain / Nagato","Itachi Uchiha","Kisame Hoshigaki","Deidara","Sasori","Hidan","Kakuzu","Konan","Zetsu","Obito Uchiha / Tobi","Madara Uchiha","Orochimaru","Kabuto Yakushi","Sasuke Uchiha","Kaguya Otsutsuki"],
+  "The Last": ["Toneri Otsutsuki","Hanabi (contrôlée)"],
+  "Boruto": ["Momoshiki Otsutsuki","Kinshiki Otsutsuki","Kara (Jigen)","Code","Ada","Daemon","Delta","Victor","Deepa"],
+  "Ère des Clans": ["Madara Uchiha","Kinkaku & Ginkaku","Chefs des clans rivaux","Démon des Dix Queues (manifestation)"],
+};
+
+// Wheel color palettes
+const PALETTE = [
+  ["#E8521A","#B83D0E","#F97316","#CC1A1A","#FF6B2B","#8B2500"],
+  ["#1D4ED8","#1E3A8A","#3B82F6","#1D6FAA","#2563EB","#0C4A6E"],
+  ["#059669","#064E3B","#10B981","#047857","#34D399","#022C22"],
+  ["#7C3AED","#4C1D95","#8B5CF6","#6D28D9","#A78BFA","#2E1065"],
+  ["#D97706","#78350F","#F59E0B","#B45309","#FCD34D","#451A03"],
+  ["#DC2626","#7F1D1D","#EF4444","#B91C1C","#FCA5A5","#450A0A"],
+  ["#0891B2","#164E63","#06B6D4","#0E7490","#67E8F9","#042F3D"],
+];
+
+// ============================================================
+// STATE
+// ============================================================
+let state = {
+  currentStep: 0,
+  results: [null, null, null, null],
+  spinning: false,
+  rotations: [0, 0, 0, 0],
+  wheelItems: [[], [], [], []],
+};
+
+// ============================================================
+// WHEEL DRAWING
+// ============================================================
+function getItemsForWheel(wheelIdx) {
+  if (wheelIdx === 0) return DATA.periodes.map(p => p.short);
+  if (wheelIdx === 1) return DATA.villages.map(v => v.short);
+  if (wheelIdx === 2) {
+    const period = state.results[0];
+    const village = state.results[1];
+    if (!period || !village) return ["?","?","?","?","?","?"];
+    const key = period + "-" + village;
+    return STARTERS[key] || ["Ninja inconnu","Ninja errant","Kunoichi","Ronin","Ancien élève","Héritier"];
+  }
+  if (wheelIdx === 3) {
+    const period = state.results[0];
+    if (!period) return ["?","?","?","?","?","?"];
+    return (ANTAGONISTS[period] || ["Ennemi inconnu"]).slice(0, 8);
+  }
+  return [];
+}
+
+function drawWheel(wheelIdx, rotation) {
+  const canvas = document.getElementById("wheel-" + wheelIdx);
+  const ctx = canvas.getContext("2d");
+  const items = state.wheelItems[wheelIdx];
+  const n = items.length;
+  if (n === 0) return;
+
+  const cx = 180, cy = 180, r = 170;
+  const arc = (2 * Math.PI) / n;
+  const palette = PALETTE[wheelIdx % PALETTE.length];
+
+  ctx.clearRect(0, 0, 360, 360);
+
+  for (let i = 0; i < n; i++) {
+    const startAngle = rotation + i * arc;
+    const endAngle = startAngle + arc;
+    const color = palette[i % palette.length];
+
+    // Slice
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, startAngle, endAngle);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.strokeStyle = "rgba(0,0,0,0.35)";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Text
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(startAngle + arc / 2);
+    ctx.textAlign = "right";
+    ctx.fillStyle = "#FFFFFF";
+    ctx.shadowColor = "rgba(0,0,0,0.8)";
+    ctx.shadowBlur = 4;
+    const label = items[i];
+    const fontSize = n <= 5 ? 15 : n <= 8 ? 13 : 11;
+    ctx.font = `700 ${fontSize}px Rajdhani, sans-serif`;
+    // Truncate
+    const maxW = r - 32;
+    let displayLabel = label;
+    while (ctx.measureText(displayLabel).width > maxW && displayLabel.length > 3) {
+      displayLabel = displayLabel.slice(0, -1);
+    }
+    if (displayLabel !== label) displayLabel += "…";
+    ctx.fillText(displayLabel, r - 16, fontSize / 3);
+    ctx.restore();
+  }
+
+  // Center circle
+  ctx.beginPath();
+  ctx.arc(cx, cy, 20, 0, Math.PI * 2);
+  ctx.fillStyle = "#0A0A0F";
+  ctx.fill();
+  ctx.strokeStyle = "#E8521A";
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  // Outer ring
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.strokeStyle = "rgba(232,82,26,0.5)";
+  ctx.lineWidth = 3;
+  ctx.stroke();
+}
+
+function initWheels() {
+  for (let i = 0; i < 4; i++) {
+    state.wheelItems[i] = getItemsForWheel(i);
+    drawWheel(i, state.rotations[i]);
+  }
+}
+
+// ============================================================
+// SPIN LOGIC
+// ============================================================
+function spinWheel(idx) {
+  if (state.spinning) return;
+  state.spinning = true;
+
+  const btn = document.getElementById("btn-" + idx);
+  const card = document.getElementById("card-" + idx);
+  btn.disabled = true;
+  btn.classList.add("spinning");
+  btn.textContent = "En rotation...";
+  card.classList.add("active");
+
+  // Update items (for wheels 2 & 3 that depend on prev results)
+  state.wheelItems[idx] = getItemsForWheel(idx);
+
+  const items = state.wheelItems[idx];
+  const n = items.length;
+  const targetIndex = Math.floor(Math.random() * n);
+  const arc = (2 * Math.PI) / n;
+
+  // We want the pointer (top, -π/2) to land on targetIndex
+  // The item i occupies angles [i*arc, (i+1)*arc] from rotation start
+  // We need: rotation + targetIndex*arc + arc/2 = -π/2 + 2πk → rotation = -π/2 - arc/2 - targetIndex*arc + 2πk
+  const baseAngle = -Math.PI / 2 - arc / 2 - targetIndex * arc;
+  const extraSpins = (5 + Math.floor(Math.random() * 5)) * 2 * Math.PI;
+  const finalRotation = baseAngle + extraSpins;
+
+  const duration = 3000 + Math.random() * 1500;
+  const startTime = performance.now();
+  const startRotation = state.rotations[idx];
+
+  function easeOut(t) {
+    return 1 - Math.pow(1 - t, 4);
+  }
+
+  function animate(now) {
+    const elapsed = now - startTime;
+    const t = Math.min(elapsed / duration, 1);
+    const currentRotation = startRotation + (finalRotation - startRotation) * easeOut(t);
+    state.rotations[idx] = currentRotation;
+    drawWheel(idx, currentRotation);
+
+    if (t < 1) {
+      requestAnimationFrame(animate);
+    } else {
+      // Done
+      state.rotations[idx] = finalRotation;
+      drawWheel(idx, finalRotation);
+
+      const resultName = items[targetIndex];
+      state.results[idx] = resultName;
+
+      // Show result
+      document.getElementById("placeholder-" + idx).style.display = "none";
+      const resultEl = document.getElementById("result-" + idx);
+      resultEl.style.display = "block";
+      resultEl.textContent = resultName;
+      resultEl.classList.add("revealed");
+
+      card.classList.remove("active");
+      card.classList.add("done");
+      btn.classList.remove("spinning");
+
+      state.spinning = false;
+      state.currentStep = Math.max(state.currentStep, idx + 1);
+
+      // Unlock next wheel
+      if (idx + 1 < 4) {
+        const nextBtn = document.getElementById("btn-" + (idx + 1));
+        nextBtn.disabled = false;
+        // Update next wheel items
+        state.wheelItems[idx + 1] = getItemsForWheel(idx + 1);
+        drawWheel(idx + 1, state.rotations[idx + 1]);
+
+        // Highlight next card
+        document.getElementById("card-" + (idx + 1)).style.boxShadow = "0 0 0 1px rgba(232,82,26,0.3)";
+      }
+
+      btn.textContent = "✓ Résultat obtenu";
+
+      // If all 4 done, show destiny
+      if (state.results.every(r => r !== null)) {
+        setTimeout(showDestiny, 500);
+      }
+    }
+  }
+
+  requestAnimationFrame(animate);
+}
+
+function spinAll() {
+  const spinAllBtn = document.getElementById("spinAllBtn");
+  spinAllBtn.disabled = true;
+  resetAll(true);
+
+  let delay = 0;
+  function doNext(idx) {
+    if (idx >= 4) return;
+    setTimeout(() => {
+      spinWheel(idx);
+      // Wait for this spin to finish, then do next
+      const checkDone = setInterval(() => {
+        if (!state.spinning && state.results[idx] !== null) {
+          clearInterval(checkDone);
+          doNext(idx + 1);
+        }
+      }, 100);
+    }, delay);
+  }
+  doNext(0);
+}
+
+// ============================================================
+// DESTINY PANEL
+// ============================================================
+function showDestiny() {
+  const panel = document.getElementById("destinyPanel");
+  const grid = document.getElementById("destinyGrid");
+  const story = document.getElementById("destinyStory");
+
+  const [periode, village, perso, antag] = state.results;
+
+  const periodeData = DATA.periodes.find(p => p.short === periode) || {};
+  const villageData = DATA.villages.find(v => v.short === village) || {};
+
+  // SÉCURITÉ : construction DOM sans innerHTML pour éviter tout XSS.
+  // Toutes les valeurs viennent de DATA (constantes internes), mais on
+  // applique la règle systématiquement pour garder cette garantie même
+  // si une future roue introduit une saisie utilisateur.
+  grid.textContent = "";
+  const destinyItems = [
+    { label: "Période",      emoji: periodeData.emoji  || "📜", value: periode,  sub: periodeData.desc  || "" },
+    { label: "Village",      emoji: villageData.emoji  || "🏘️", value: village,  sub: "Village du " + (villageData.symbol || "Destin") },
+    { label: "Personnage",   emoji: "⚡",                        value: perso,    sub: "Ton héros ninja" },
+    { label: "Antagoniste",  emoji: "☠️",                        value: antag,    sub: "Ton ennemi à vaincre" },
+  ];
+  destinyItems.forEach(item => {
+    const card    = document.createElement("div");  card.className = "destiny-item";
+    const lbl     = document.createElement("div");  lbl.className  = "destiny-item-label";
+    const val     = document.createElement("div");  val.className  = "destiny-item-value";
+    const sub     = document.createElement("div");  sub.className  = "destiny-item-sub";
+    lbl.textContent = item.label;
+    val.textContent = item.emoji + " " + item.value;
+    sub.textContent = item.sub;
+    card.appendChild(lbl); card.appendChild(val); card.appendChild(sub);
+    grid.appendChild(card);
+  });
+
+  // SÉCURITÉ : story.innerHTML avec interpolation remplacé par construction DOM.
+  // Les valeurs (periode, village, perso, antag) viennent de DATA et ne sont
+  // jamais saisies par l'utilisateur, mais on applique la règle par principe.
+  // Helper : crée un <strong> avec textContent
+  function bold(txt) {
+    const s = document.createElement("strong"); s.textContent = txt; return s;
+  }
+  const storyTemplates = [
+    (p,v,c,a) => { const f = document.createDocumentFragment(); f.append("Durant la période "); f.append(bold(p)); f.append(", un jeune ninja de "); f.append(bold(v)); f.append(" nommé "); f.append(bold(c)); f.append(" reçoit une mission S-rank qui va changer le monde. Sur sa route se dresse "); f.append(bold(a)); f.append(", dont le pouvoir menace l'équilibre des nations ninja. Le chakra tremble. La bataille commence."); return f; },
+    (p,v,c,a) => { const f = document.createDocumentFragment(); f.append("Les archives secrètes de "); f.append(bold(v)); f.append(" révèlent une prophétie oubliée : à l'époque "); f.append(bold(p)); f.append(", "); f.append(bold(c)); f.append(" sera l'unique espoir face à "); f.append(bold(a)); f.append(". Mais pour vaincre cet ennemi, il faudra maîtriser un jutsu interdit que personne n'a survécu à apprendre..."); return f; },
+    (p,v,c,a) => { const f = document.createDocumentFragment(); f.append("Pendant l'ère "); f.append(bold(p)); f.append(", les rues de "); f.append(bold(v)); f.append(" sont plongées dans l'ombre. "); f.append(bold(a)); f.append(" orchestre un plan dans les coulisses depuis des années. "); f.append(bold(c)); f.append(" est le seul à avoir percé son secret — mais qui le croira ?"); return f; },
+    (p,v,c,a) => { const f = document.createDocumentFragment(); f.append("Une mission banale de rang D va tout changer. "); f.append(bold(c)); f.append(", ninja de "); f.append(bold(v)); f.append(", croise le chemin de "); f.append(bold(a)); f.append(" pendant la période "); f.append(bold(p)); f.append(". Ce qui devait être une simple livraison devient le point de départ d'une légende."); return f; },
+  ];
+  story.textContent = "";
+  const chosenTemplate = storyTemplates[Math.floor(Math.random() * storyTemplates.length)];
+  story.appendChild(chosenTemplate(periode, village, perso, antag));
+
+  panel.classList.add("visible");
+  panel.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// ============================================================
+// RESET
+// ============================================================
+function resetAll(silent = false) {
+  state.results = [null, null, null, null];
+  state.currentStep = 0;
+  state.spinning = false;
+
+  for (let i = 0; i < 4; i++) {
+    state.rotations[i] = 0;
+    document.getElementById("placeholder-" + i).style.display = "block";
+    const resultEl = document.getElementById("result-" + i);
+    resultEl.style.display = "none";
+    resultEl.classList.remove("revealed");
+    const btn = document.getElementById("btn-" + i);
+    btn.disabled = i > 0;
+    btn.classList.remove("spinning");
+    btn.textContent = "⚡ Tourner";
+    const card = document.getElementById("card-" + i);
+    card.classList.remove("active", "done");
+    card.style.boxShadow = "";
+    state.wheelItems[i] = getItemsForWheel(i);
+    drawWheel(i, 0);
+  }
+
+  if (!silent) {
+    const panel = document.getElementById("destinyPanel");
+    panel.classList.remove("visible");
+    document.getElementById("spinAllBtn").disabled = false;
+  }
+}
+
+// ============================================================
+// SÉCURITÉ — Règles à respecter pour toutes les contributions
+// ============================================================
+// Contexte : site statique public, sans backend, sans données utilisateur.
+//
+// RÈGLE 1 — Jamais de innerHTML avec une variable non maîtrisée.
+//   ✅ el.textContent = userValue
+//   ✅ el.innerHTML = "<span>texte statique connu</span>"  (HTML écrit en dur)
+//   ❌ el.innerHTML = `<div>${userValue}</div>`
+//
+// RÈGLE 2 — Toute future donnée variable passe par sanitize() avant
+//   d'atterrir dans le DOM, par précaution défensive.
+//
+// RÈGLE 3 — Aucune clé API, token ou secret ne doit jamais figurer
+//   dans ce fichier (code source public sur GitHub).
+//
+// RÈGLE 4 — Pas de dépendance JS externe (CDN tiers). Google Fonts
+//   est accepté en CSS uniquement (aucune exécution de code).
+//
+// RÈGLE 5 — La CSP dans <head> doit être mise à jour si de nouvelles
+//   origines externes sont ajoutées.
+// ============================================================
+
+// Utilitaire défensif : échappe tout HTML dans une chaîne.
+// À utiliser systématiquement si une future fonctionnalité introduit
+// une saisie utilisateur (pseudo, champ texte libre, etc.).
+function sanitize(str) {
+  const el = document.createElement("div");
+  el.textContent = String(str);
+  return el.innerHTML; // retourne la version échappée
+}
+
+// Protection anti-clickjacking : si le site est embarqué dans un iframe
+// sans y être autorisé (frame-ancestors 'none' dans la CSP), on sort.
+// Double protection JS pour les navigateurs anciens qui ignorent la CSP.
+if (window.self !== window.top) {
+  document.documentElement.style.display = "none";
+  window.top.location = window.self.location;
+}
+
+// ============================================================
+// INIT
+// ============================================================
+window.addEventListener("DOMContentLoaded", () => {
+  initWheels();
+});
+</script>
+</body>
+</html>
