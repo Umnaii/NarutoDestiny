@@ -53,52 +53,220 @@ const VILLAGES = [
   { short:"Oto",    emoji:"🎵", symbol:"Son"     },
 ];
 
-// Résultats de la roue Issue — ordre fixe pour la roue canvas
+// Résultats de la roue Issue — 3 segments, poids calculés dynamiquement par engine.js
 // xp = points de progression vers le rang suivant
 // life = modification de vies (0 ou -1)
+// Les poids de base sont modifiés par computeIssueWeights() selon style vs ennemi.
 const OUTCOMES = [
-  { short:"Victoire éclatante", emoji:"🏆", xp:3, life: 0, cls:"out-v", wheelColor:"#059669" },
-  { short:"Victoire difficile", emoji:"⚔️",  xp:2, life: 0, cls:"out-h", wheelColor:"#D97706" },
-  { short:"Match nul",          emoji:"🤝", xp:1, life: 0, cls:"out-d", wheelColor:"#1D4ED8" },
-  { short:"Défaite",            emoji:"💀", xp:0, life:-1, cls:"out-x", wheelColor:"#7F1D1D" },
+  { short:"Victoire",   emoji:"🏆", xp:3, life: 0, cls:"out-v", wheelColor:"#059669" },
+  { short:"Match nul",  emoji:"🤝", xp:1, life: 0, cls:"out-d", wheelColor:"#1D4ED8" },
+  { short:"Défaite",    emoji:"💀", xp:0, life:-1, cls:"out-x", wheelColor:"#7F1D1D" },
 ];
 
-// Starters indexés par "periode.short-village.short"
-const STARTERS = {
-  "Classique-Konoha": ["Naruto Uzumaki","Sasuke Uchiha","Sakura Haruno","Rock Lee","Neji Hyûga","Hinata Hyûga","Shino Aburame","Kiba Inuzuka"],
-  "Classique-Suna":   ["Gaara","Kankuro","Temari"],
-  "Classique-Kiri":   ["Zabuza Momochi (jeune)","Haku (jeune)","Kisame (jeune)"],
-  "Classique-Kumo":   ["Killer B (jeune)","Yugito Nii (jeune)"],
-  "Classique-Iwa":    ["Kurotsuchi (jeune)","Akatsuchi (jeune)"],
-  "Classique-Oto":    ["Dosu Kinuta","Zaku Abumi","Kin Tsuchi"],
-
-  "Shippuden-Konoha": ["Naruto Uzumaki","Sakura Haruno","Sai","Yamato","Kakashi Hatake","Shikamaru Nara"],
-  "Shippuden-Suna":   ["Gaara (Kazekage)","Temari","Kankuro"],
-  "Shippuden-Kiri":   ["Mei Terumi","Chojuro","Ao"],
-  "Shippuden-Kumo":   ["Killer B","A (Raikage)","Yugito Nii","Omoi","Karui"],
-  "Shippuden-Iwa":    ["Onoki (Tsuchikage)","Kurotsuchi","Akatsuchi"],
-  "Shippuden-Oto":    ["Kabuto Yakushi","Jugo","Suigetsu","Karin"],
-
-  "The Last-Konoha":  ["Naruto Uzumaki","Hinata Hyûga","Sakura Haruno","Sai","Shikamaru","Lee","Tenten"],
-  "The Last-Suna":    ["Gaara","Temari"],
-  "The Last-Kiri":    ["Mei Terumi","Chojuro"],
-  "The Last-Kumo":    ["Killer B","Omoi"],
-  "The Last-Iwa":     ["Kurotsuchi"],
-  "The Last-Oto":     ["Kabuto Yakushi (reclus)"],
-
-  "Ère des Clans-Konoha": ["Hashirama Senju","Tobirama Senju","Madara Uchiha (jeune)"],
-  "Ère des Clans-Suna":   ["Chef du clan du Sable","Guerrière du Vent"],
-  "Ère des Clans-Kiri":   ["Premier Mizukage","Guerrier brumeux"],
-  "Ère des Clans-Kumo":   ["Premier Raikage","Kumo no Senshi"],
-  "Ère des Clans-Iwa":    ["Premier Tsuchikage","Guerrier de Roche"],
-  "Ère des Clans-Oto":    ["Guerrier errant","Shinobi solitaire"],
+// ── STYLES DE COMBAT ──────────────────────────────────────────
+// Triangle de faiblesses : Ninjutsu > Taijutsu > Genjutsu > Ninjutsu
+// "bat" = avantage x1.4, "perd" = désavantage x0.6
+const STYLE_TRIANGLE = {
+  ninjutsu: { bat: "taijutsu",  perd: "genjutsu"  },
+  taijutsu: { bat: "genjutsu",  perd: "ninjutsu"  },
+  genjutsu: { bat: "ninjutsu",  perd: "taijutsu"  },
 };
 
+// Starters : chaque perso a style + canBeGenin
+// canBeGenin:false = jamais Genin dans le lore (déjà Kage/Sannin/Akatsuki au moment de la période)
+// style: "ninjutsu" | "taijutsu" | "genjutsu"
+const STARTERS = {
+  "Classique-Konoha": [
+    { name:"Naruto Uzumaki",  style:"ninjutsu", canBeGenin:true  },
+    { name:"Sasuke Uchiha",   style:"ninjutsu", canBeGenin:true  },
+    { name:"Sakura Haruno",   style:"genjutsu", canBeGenin:true  },
+    { name:"Rock Lee",        style:"taijutsu", canBeGenin:true  },
+    { name:"Neji Hyûga",      style:"taijutsu", canBeGenin:true  },
+    { name:"Hinata Hyûga",    style:"taijutsu", canBeGenin:true  },
+    { name:"Shino Aburame",   style:"ninjutsu", canBeGenin:true  },
+    { name:"Kiba Inuzuka",    style:"taijutsu", canBeGenin:true  },
+    { name:"Shikamaru Nara",  style:"genjutsu", canBeGenin:true  },
+    { name:"Ino Yamanaka",    style:"genjutsu", canBeGenin:true  },
+    { name:"Choji Akimichi",  style:"taijutsu", canBeGenin:true  },
+  ],
+  "Classique-Suna": [
+    { name:"Gaara",   style:"ninjutsu", canBeGenin:true  },
+    { name:"Kankuro", style:"ninjutsu", canBeGenin:true  },
+    { name:"Temari",  style:"ninjutsu", canBeGenin:true  },
+  ],
+  "Classique-Kiri": [
+    { name:"Zabuza Momochi (jeune)", style:"taijutsu", canBeGenin:true  },
+    { name:"Haku (jeune)",           style:"ninjutsu", canBeGenin:true  },
+    // Kisame était déjà Jônin en mission en Classique → canBeGenin:false
+    { name:"Kisame Hoshigaki",       style:"taijutsu", canBeGenin:false },
+  ],
+  "Classique-Kumo": [
+    { name:"Killer B (jeune)", style:"taijutsu", canBeGenin:true  },
+    { name:"Yugito Nii (jeune)",style:"ninjutsu", canBeGenin:true },
+  ],
+  "Classique-Iwa": [
+    { name:"Kurotsuchi (jeune)", style:"ninjutsu", canBeGenin:true },
+    { name:"Akatsuchi (jeune)",  style:"taijutsu", canBeGenin:true },
+  ],
+  "Classique-Oto": [
+    { name:"Dosu Kinuta", style:"ninjutsu", canBeGenin:true },
+    { name:"Zaku Abumi",  style:"ninjutsu", canBeGenin:true },
+    { name:"Kin Tsuchi",  style:"genjutsu", canBeGenin:true },
+  ],
+
+  "Shippuden-Konoha": [
+    { name:"Naruto Uzumaki",  style:"ninjutsu", canBeGenin:true  },
+    { name:"Sakura Haruno",   style:"taijutsu", canBeGenin:true  }, // Chûnin+ en Shippuden mais a été Genin
+    { name:"Sai",             style:"ninjutsu", canBeGenin:true  },
+    { name:"Yamato",          style:"ninjutsu", canBeGenin:true  },
+    { name:"Shikamaru Nara",  style:"genjutsu", canBeGenin:true  },
+    // Kakashi était déjà Jônin enfant → canBeGenin:false ici
+    { name:"Kakashi Hatake",  style:"ninjutsu", canBeGenin:false },
+  ],
+  "Shippuden-Suna": [
+    { name:"Temari",  style:"ninjutsu", canBeGenin:true  },
+    { name:"Kankuro", style:"ninjutsu", canBeGenin:true  },
+    // Gaara était déjà Kazekage → canBeGenin:false
+    { name:"Gaara (Kazekage)", style:"ninjutsu", canBeGenin:false },
+  ],
+  "Shippuden-Kiri": [
+    { name:"Chojuro",  style:"taijutsu", canBeGenin:true  },
+    { name:"Ao",       style:"genjutsu", canBeGenin:true  },
+    // Mei Terumi = Mizukage → canBeGenin:false
+    { name:"Mei Terumi", style:"ninjutsu", canBeGenin:false },
+  ],
+  "Shippuden-Kumo": [
+    { name:"Omoi",  style:"ninjutsu", canBeGenin:true  },
+    { name:"Karui", style:"taijutsu", canBeGenin:true  },
+    { name:"Killer B",    style:"taijutsu", canBeGenin:true  },
+    // A = Raikage → canBeGenin:false
+    { name:"A (Raikage)", style:"taijutsu", canBeGenin:false },
+  ],
+  "Shippuden-Iwa": [
+    { name:"Kurotsuchi", style:"ninjutsu", canBeGenin:true  },
+    { name:"Akatsuchi",  style:"taijutsu", canBeGenin:true  },
+    // Onoki = Tsuchikage → canBeGenin:false
+    { name:"Onoki (Tsuchikage)", style:"ninjutsu", canBeGenin:false },
+  ],
+  "Shippuden-Oto": [
+    { name:"Jugo",     style:"taijutsu", canBeGenin:true  },
+    { name:"Suigetsu", style:"taijutsu", canBeGenin:true  },
+    { name:"Karin",    style:"genjutsu", canBeGenin:true  },
+    // Kabuto = déjà espion adulte → canBeGenin:false
+    { name:"Kabuto Yakushi", style:"ninjutsu", canBeGenin:false },
+  ],
+
+  "The Last-Konoha": [
+    { name:"Hinata Hyûga", style:"taijutsu", canBeGenin:true  },
+    { name:"Sai",          style:"ninjutsu", canBeGenin:true  },
+    { name:"Shikamaru",    style:"genjutsu", canBeGenin:true  },
+    { name:"Rock Lee",     style:"taijutsu", canBeGenin:true  },
+    { name:"Tenten",       style:"ninjutsu", canBeGenin:true  },
+    // Naruto = Héros de guerre, Sakura = Jônin confirmé, mais ont été Genin
+    { name:"Naruto Uzumaki", style:"ninjutsu", canBeGenin:true },
+    { name:"Sakura Haruno",  style:"taijutsu", canBeGenin:true },
+  ],
+  "The Last-Suna": [
+    { name:"Temari", style:"ninjutsu", canBeGenin:true  },
+    // Gaara = Kazekage → canBeGenin:false
+    { name:"Gaara",  style:"ninjutsu", canBeGenin:false },
+  ],
+  "The Last-Kiri": [
+    { name:"Chojuro",    style:"taijutsu", canBeGenin:true  },
+    { name:"Mei Terumi", style:"ninjutsu", canBeGenin:false },
+  ],
+  "The Last-Kumo": [
+    { name:"Omoi",     style:"ninjutsu", canBeGenin:true  },
+    { name:"Killer B", style:"taijutsu", canBeGenin:true  },
+  ],
+  "The Last-Iwa": [
+    { name:"Kurotsuchi", style:"ninjutsu", canBeGenin:true },
+  ],
+  "The Last-Oto": [
+    { name:"Kabuto Yakushi (reclus)", style:"ninjutsu", canBeGenin:false },
+  ],
+
+  "Ère des Clans-Konoha": [
+    { name:"Tobirama Senju",        style:"ninjutsu", canBeGenin:true  },
+    { name:"Madara Uchiha (jeune)", style:"ninjutsu", canBeGenin:true  },
+    // Hashirama = déjà Hokage / chef de clan → canBeGenin:false
+    { name:"Hashirama Senju",       style:"ninjutsu", canBeGenin:false },
+  ],
+  "Ère des Clans-Suna": [
+    { name:"Chef du clan du Sable", style:"ninjutsu", canBeGenin:false },
+    { name:"Guerrière du Vent",     style:"ninjutsu", canBeGenin:true  },
+  ],
+  "Ère des Clans-Kiri": [
+    { name:"Guerrier brumeux",  style:"taijutsu", canBeGenin:true  },
+    { name:"Premier Mizukage", style:"ninjutsu", canBeGenin:false },
+  ],
+  "Ère des Clans-Kumo": [
+    { name:"Kumo no Senshi",  style:"taijutsu", canBeGenin:true  },
+    { name:"Premier Raikage", style:"taijutsu", canBeGenin:false },
+  ],
+  "Ère des Clans-Iwa": [
+    { name:"Guerrier de Roche",  style:"taijutsu", canBeGenin:true  },
+    { name:"Premier Tsuchikage", style:"ninjutsu", canBeGenin:false },
+  ],
+  "Ère des Clans-Oto": [
+    { name:"Guerrier errant",  style:"ninjutsu", canBeGenin:true },
+    { name:"Shinobi solitaire",style:"taijutsu", canBeGenin:true },
+  ],
+};
+
+// Antagonistes par grade du joueur — chaque ennemi a :
+//   weakness   : style qui lui inflige x1.4 (avantage joueur)
+//   resistance : style qui lui inflige x0.6 (désavantage joueur)
+// Les poids de base de la roue Issue (Victoire/Nul/Défaite = 50/25/25)
+// sont multipliés par ces coefficients dans engine.computeIssueWeights().
 const ANTAGONISTS = {
-  "Classique":    ["Orochimaru","Zabuza Momochi","Kabuto Yakushi","Gato","Mizuki","Haku","Les frères Démon","Jirobo","Kidomaru","Tayuya","Sakon & Ukon","Kimimaro"],
-  "Shippuden":    ["Pain / Nagato","Itachi Uchiha","Kisame Hoshigaki","Deidara","Sasori","Hidan","Kakuzu","Konan","Zetsu","Obito Uchiha","Madara Uchiha","Kabuto Yakushi","Sasuke Uchiha","Kaguya Otsutsuki"],
-  "The Last":     ["Toneri Otsutsuki","Hamura Otsutsuki (vision)","Gardiens de la Lune"],
-  "Ère des Clans":["Madara Uchiha","Kinkaku & Ginkaku","Chefs des clans rivaux","Esprit du Bijuu errant","Le démon des terres du vent"],
+  // ── GENIN — ennemis faibles, pas encore maîtres ──
+  "Genin": [
+    { name:"Mizuki",          weakness:"taijutsu", resistance:"ninjutsu" },
+    { name:"Haku",            weakness:"genjutsu", resistance:"ninjutsu" },
+    { name:"Dosu Kinuta",     weakness:"taijutsu", resistance:"genjutsu" },
+    { name:"Zaku Abumi",      weakness:"genjutsu", resistance:"ninjutsu" },
+    { name:"Kin Tsuchi",      weakness:"ninjutsu", resistance:"genjutsu" },
+    { name:"Kidomaru",        weakness:"taijutsu", resistance:"ninjutsu" },
+    { name:"Jirobo",          weakness:"ninjutsu", resistance:"taijutsu" },
+    { name:"Gato",            weakness:"taijutsu", resistance:"genjutsu" },
+    { name:"Genin de Sound",  weakness:"genjutsu", resistance:"taijutsu" },
+  ],
+  // ── CHÛNIN — ennemis intermédiaires, style marqué ──
+  "Chûnin": [
+    { name:"Tayuya",              weakness:"taijutsu", resistance:"genjutsu" },
+    { name:"Sakon & Ukon",        weakness:"ninjutsu", resistance:"taijutsu" },
+    { name:"Kimimaro",            weakness:"genjutsu", resistance:"taijutsu" },
+    { name:"Kabuto Yakushi",      weakness:"taijutsu", resistance:"ninjutsu" },
+    { name:"Zabuza Momochi",      weakness:"ninjutsu", resistance:"taijutsu" },
+    { name:"Gaara (antagoniste)", weakness:"ninjutsu", resistance:"taijutsu" },
+    { name:"Temari (adversaire)", weakness:"taijutsu", resistance:"ninjutsu" },
+    { name:"Kankuro (adversaire)",weakness:"genjutsu", resistance:"ninjutsu" },
+    { name:"Cursed Seal Sasuke",  weakness:"genjutsu", resistance:"ninjutsu" },
+  ],
+  // ── JÔNIN — ennemis puissants, spécialistes ──
+  "Jônin": [
+    { name:"Itachi Uchiha",    weakness:"taijutsu", resistance:"genjutsu" },
+    { name:"Kisame Hoshigaki", weakness:"genjutsu", resistance:"ninjutsu" },
+    { name:"Deidara",          weakness:"genjutsu", resistance:"ninjutsu" },
+    { name:"Sasori",           weakness:"ninjutsu", resistance:"taijutsu" },
+    { name:"Hidan",            weakness:"ninjutsu", resistance:"taijutsu" },
+    { name:"Kakuzu",           weakness:"ninjutsu", resistance:"taijutsu" },
+    { name:"Konan",            weakness:"taijutsu", resistance:"ninjutsu" },
+    { name:"Orochimaru",       weakness:"taijutsu", resistance:"genjutsu" },
+    { name:"Sasuke Uchiha",    weakness:"taijutsu", resistance:"genjutsu" },
+    { name:"Toneri Otsutsuki", weakness:"taijutsu", resistance:"ninjutsu" },
+  ],
+  // ── KAGE — boss ultimes, résistances marquées ──
+  "Kage": [
+    { name:"Pain / Nagato",          weakness:"taijutsu", resistance:"ninjutsu" },
+    { name:"Obito Uchiha",           weakness:"ninjutsu", resistance:"genjutsu" },
+    { name:"Madara Uchiha",          weakness:"taijutsu", resistance:"ninjutsu" },
+    { name:"Kaguya Otsutsuki",       weakness:"ninjutsu", resistance:"taijutsu" },
+    { name:"Kinkaku & Ginkaku",      weakness:"genjutsu", resistance:"ninjutsu" },
+    { name:"Zetsu Blanc",            weakness:"taijutsu", resistance:"ninjutsu" },
+    { name:"Kabuto Yakushi (Edo T.)",weakness:"taijutsu", resistance:"genjutsu" },
+  ],
 };
 
 // ── LOOT POOL ─────────────────────────────────────────────────

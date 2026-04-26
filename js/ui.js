@@ -239,11 +239,10 @@ function _initWheelDraw(stepIdx) {
 }
 
 function _getItems(stepIdx) {
-  const G = Engine.getState();
   switch (stepIdx) {
     case 0: return VILLAGES.map(v => v.short);
-    case 1: return Engine.getStarters();
-    case 2: return Engine.getAntags();
+    case 1: return Engine.getStarters(); // déjà filtrés canBeGenin, retourne noms
+    case 2: return Engine.getAntags().map(a => a.name); // objets → noms pour la roue
     default: return [];
   }
 }
@@ -271,10 +270,14 @@ function spinCurrent() {
   let spinPromise;
 
   if (step.pal === -1) {
-    // Roue Issue
+    // Roue Issue — poids calculés dynamiquement selon style joueur vs ennemi
+    const weights = Engine.computeIssueWeights();
+    // Afficher l'analyse de combat avant de tourner
+    showCombatAnalysis(weights);
     spinPromise = WheelEngine.spinIssue({
       canvasId: step.canvasId,
       startRotation: _stepRots[_stepIdx],
+      weights,
       onFrame: r => { _stepRots[_stepIdx] = r; },
     }).then(({ targetIndex, finalRotation }) => {
       _stepRots[_stepIdx] = finalRotation;
@@ -313,6 +316,10 @@ function spinCurrent() {
       _layerEls[_stepIdx].classList.add("done");
       const result = items[targetIndex];
       Engine.setResult(step.id, result);
+      // Stocker le style si c'est la roue personnage
+      if (step.id === "perso") {
+        Engine.setResult("persoStyle", Engine.getPersoStyle(result));
+      }
       showStepResult(step.label, result, "");
       // Préparer la prochaine roue
       if (_stepIdx + 1 < STEPS.length) _initWheelDraw(_stepIdx + 1);
@@ -404,10 +411,14 @@ function spinAll() {
 // ── DESTINY PANEL ─────────────────────────────────────────────
 function showDestiny() {
   const G = Engine.getState();
-  const { village, perso, antag, outcome, loot, outcomeIdx } = G.round.results;
+  const { village, perso, antag, outcome, loot, outcomeIdx, persoStyle } = G.round.results;
   const vd  = VILLAGES.find(v => v.short === village) || {};
   const od  = OUTCOMES[outcomeIdx] || OUTCOMES[0];
   const lootItem = loot;
+  const antagData = Engine.getAntagData(antag);
+
+  const STYLE_EMOJI = { ninjutsu:"🔥", taijutsu:"💪", genjutsu:"😵" };
+  const STYLE_NOM   = { ninjutsu:"Ninjutsu", taijutsu:"Taijutsu", genjutsu:"Genjutsu" };
 
   const panel = $("destinyPanel");
   panel.style.display = "block";
@@ -416,10 +427,10 @@ function showDestiny() {
   const grid = $("dGrid");
   grid.textContent = "";
   [
-    { label:"Village",     emoji: vd.emoji||"🏘️", value: village,  sub: "Village du "+(vd.symbol||"Destin") },
-    { label:"Personnage",  emoji: "⚡",            value: perso,    sub: "Ton héros ninja"                   },
-    { label:"Antagoniste", emoji: "☠️",            value: antag,    sub: "Ton ennemi"                        },
-    { label:"Issue",       emoji: od.emoji,        value: outcome,  sub: G.periode ? G.periode.short : "",   },
+    { label:"Village",     emoji: vd.emoji||"🏘️",                 value: village,  sub: "Village du "+(vd.symbol||"Destin") },
+    { label:"Personnage",  emoji: STYLE_EMOJI[persoStyle]||"⚡",    value: perso,    sub: "Style : "+(STYLE_NOM[persoStyle]||"?") },
+    { label:"Antagoniste", emoji: "☠️",                             value: antag,    sub: antagData ? "Faiblesse : "+STYLE_NOM[antagData.weakness]+" / Résistance : "+STYLE_NOM[antagData.resistance] : "Ennemi mystérieux" },
+    { label:"Issue",       emoji: od.emoji,                         value: outcome,  sub: Engine.currentRank().name + " — " + (G.periode ? G.periode.short : "") },
   ].forEach(it => {
     const d = document.createElement("div"); d.className = "d-item";
     const l = document.createElement("div"); l.className = "d-lbl"; l.textContent = it.label;
@@ -502,6 +513,48 @@ function updateCollection() {
     sl.appendChild(sw); sl.appendChild(nm); sl.appendChild(out);
     grid.appendChild(sl);
   });
+}
+
+// ── ANALYSE COMBAT ────────────────────────────────────────────
+// Affiche brièvement les infos style vs ennemi avant la roue Issue
+function showCombatAnalysis(weights) {
+  const G = Engine.getState();
+  const persoName  = G.round.results.perso;
+  const antagName  = G.round.results.antag;
+  const playerStyle = G.round.results.persoStyle || "ninjutsu";
+  const antagData  = Engine.getAntagData(antagName);
+
+  const STYLE_LABELS = { ninjutsu:"Ninjutsu 🔥", taijutsu:"Taijutsu 💪", genjutsu:"Genjutsu 😵" };
+  const STYLE_RESULT = {
+    avantage:   "✅ Avantage — ta technique est la faiblesse ennemie !",
+    desavantage:"❌ Désavantage — l'ennemi résiste à ton style.",
+    neutre:     "⚖️ Neutre — aucun avantage particulier.",
+  };
+
+  let matchup = "neutre";
+  if (antagData && playerStyle === antagData.weakness)    matchup = "avantage";
+  if (antagData && playerStyle === antagData.resistance)  matchup = "desavantage";
+
+  const totalW = weights.reduce((s, w) => s + w.weight, 0);
+  const pctVictoire = Math.round(weights[0].weight / totalW * 100);
+
+  // Injecter dans le label de l'arena (safe DOM — Règle 1)
+  const lbl = $("arenaStepLabel");
+  lbl.textContent = "";
+
+  const line1 = document.createElement("div");
+  line1.style.cssText = "font-size:13px;margin-bottom:4px;";
+  line1.textContent = STYLE_LABELS[playerStyle] + " vs " + (antagData ? STYLE_LABELS[antagData.weakness] + " (faiblesse)" : "");
+
+  const line2 = document.createElement("div");
+  line2.style.cssText = "font-size:12px;color:var(--text-muted);margin-bottom:2px;";
+  line2.textContent = STYLE_RESULT[matchup];
+
+  const line3 = document.createElement("div");
+  line3.style.cssText = "font-size:11px;color:var(--text-muted);";
+  line3.textContent = "Chance de victoire estimée : " + pctVictoire + "%";
+
+  lbl.appendChild(line1); lbl.appendChild(line2); lbl.appendChild(line3);
 }
 
 // ── CHANCE / HEAL NOTICES ─────────────────────────────────────
