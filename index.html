@@ -21,9 +21,9 @@
 <div class="bg-pattern" aria-hidden="true"></div>
 
 <!-- ══════════════════════════════════════════════════════════
-     ÉCRAN 1 — SÉLECTION DE PÉRIODE
+     ÉCRAN 1 — SÉLECTION DU VILLAGE D'ORIGINE
      ══════════════════════════════════════════════════════════ -->
-<div id="screenPeriod" class="screen active">
+<div id="screenVillage" class="screen active">
   <div class="wrap">
 
     <header>
@@ -34,19 +34,19 @@
         <path d="M32 12C28 24 20 28 20 38C20 44 25 50 32 52C32 52 32 32 32 12Z" fill="#E8521A" opacity=".5"/>
         <circle cx="32" cy="32" r="4" fill="#E8521A"/>
       </svg>
-      <h1>Naruto Destiny Wheel<span>Choisir une ère pour commencer</span></h1>
+      <h1>Naruto Destiny Wheel<span>Choisis ton village d'origine</span></h1>
       <div class="h-line" aria-hidden="true"></div>
     </header>
 
     <p class="period-intro">
-      Sélectionne l'ère dans laquelle se déroulera ton aventure ninja.
-      Ce choix est définitif pour toute la partie.
+      Tout ninja part du rang Genin. Choisis le village qui t'a formé —
+      ce choix restera le même pour toute la partie.
     </p>
 
-    <!-- Cartes injectées par buildPeriodScreen() dans ui.js -->
-    <div class="period-cards" id="periodCards" role="radiogroup" aria-label="Choisir une période"></div>
+    <!-- Cartes injectées par buildVillageScreen() dans ui.js -->
+    <div class="period-cards" id="villageCards" role="radiogroup" aria-label="Choisir un village"></div>
 
-    <button class="period-confirm" id="periodConfirm" onclick="confirmPeriod()" aria-label="Confirmer la période choisie">
+    <button class="period-confirm" id="villageConfirm" onclick="confirmVillage()" aria-label="Confirmer le village choisi">
       Commencer l'aventure →
     </button>
 
@@ -126,16 +126,6 @@
           </div>
         </div>
         <button class="btn-spin" id="spinBtn" onclick="spinCurrent()">⚡ Tourner</button>
-      </div>
-
-      <div class="all-wrap">
-        <button class="btn-all" id="allBtn" onclick="spinAll()">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-            <polyline points="21 3 21 9 15 9"/>
-          </svg>
-          Révéler mon destin
-        </button>
       </div>
 
     </div>
