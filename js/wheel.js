@@ -119,24 +119,20 @@ const WheelEngine = (() => {
     return items.length - 1;
   }
 
-  // ── Roue Issue (pondérée) ────────────────────────────────────
-  // Items attendus : tableau d'objets { short, wheelColor, weight }
+  // ── Roue Issue (3 segments, poids dynamiques) ────────────────
+  // weights = tableau retourné par Engine.computeIssueWeights()
   function drawIssue(canvasId, rotation) {
     const items  = OUTCOMES.map(o => o.short);
     const colors = OUTCOMES.map(o => o.wheelColor);
     draw(canvasId, items, colors, rotation);
   }
 
-  function spinIssue({ canvasId, startRotation, onFrame }) {
-    // Poids : victoire éclatante=35, victoire difficile=30, match nul=20, défaite=15
-    const weighted = OUTCOMES.map((o, i) => {
-      const weights = [35, 30, 20, 15];
-      return { ...o, weight: weights[i] };
-    });
-    const items  = weighted.map(o => o.short);
-    const colors = weighted.map(o => o.wheelColor);
+  // weights : [{ short, wheelColor, weight, ... }, ...] depuis Engine.computeIssueWeights()
+  function spinIssue({ canvasId, startRotation, weights, onFrame }) {
+    const items  = weights.map(o => o.short);
+    const colors = weights.map(o => o.wheelColor);
     const n = items.length;
-    const targetIndex = _weightedRandomFromWeights(weighted);
+    const targetIndex = _weightedRandomFromWeights(weights);
     const arc = (2 * Math.PI) / n;
     const baseAngle = -Math.PI / 2 - arc / 2 - targetIndex * arc;
     const finalRotation = baseAngle + (6 + Math.floor(Math.random() * 5)) * 2 * Math.PI;

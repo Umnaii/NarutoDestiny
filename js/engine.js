@@ -50,19 +50,80 @@ const Engine = (() => {
   }
 
   // ── Starters pour le round courant ───────────────────────────
+  // Filtre canBeGenin:true — les persos qui n'ont jamais été Genin sont exclus
   function getStarters() {
     const p = G.periode;
     const v = G.round.results.village;
     if (!p || !v) return ["Ninja inconnu","Ninja errant","Kunoichi"];
     const key = p.short + "-" + v;
-    return STARTERS[key] || ["Ninja inconnu","Ninja errant","Kunoichi","Ronin","Héritier"];
+    const all = STARTERS[key] || [];
+    const filtered = all.filter(s => s.canBeGenin);
+    return filtered.length
+      ? filtered.map(s => s.name)
+      : ["Ninja inconnu","Ninja errant","Héritier"];
   }
 
-  // ── Antagonistes pour le round courant ───────────────────────
-  function getAntags() {
+  // Récupère le style de combat du perso tiré
+  function getPersoStyle(name) {
     const p = G.periode;
-    if (!p) return ["Ennemi inconnu"];
-    return (ANTAGONISTS[p.short] || ["Ennemi inconnu"]).slice(0, 10);
+    const v = G.round.results.village;
+    if (!p || !v) return "ninjutsu";
+    const key = p.short + "-" + v;
+    const all = STARTERS[key] || [];
+    const found = all.find(s => s.name === name);
+    return found ? found.style : "ninjutsu";
+  }
+
+  // ── Antagonistes selon le grade actuel du joueur ─────────────
+  function getAntags() {
+    const rank = RANKS[G.rankIdx];
+    return (ANTAGONISTS[rank.name] || [{ name:"Ennemi inconnu", weakness:"taijutsu", resistance:"ninjutsu" }]);
+  }
+
+  // Récupère l'objet antagoniste complet (avec weakness/resistance)
+  function getAntagData(name) {
+    const rank = RANKS[G.rankIdx];
+    const list = ANTAGONISTS[rank.name] || [];
+    return list.find(a => a.name === name) || { name, weakness:"taijutsu", resistance:"ninjutsu" };
+  }
+
+  // ── Calcul des poids de la roue Issue ────────────────────────
+  // Triangle : Ninjutsu > Taijutsu > Genjutsu > Ninjutsu (coefficient x1.4 / x0.6)
+  // Items d'inventaire : chaque tech du bon type ajoute +8pts sur Victoire
+  // Armes : +5pts sur Victoire
+  // Poids de base : Victoire=50, Nul=25, Défaite=25
+  function computeIssueWeights() {
+    const persoName = G.round.results.perso;
+    const antagName = G.round.results.antag;
+    const playerStyle = persoName ? getPersoStyle(persoName) : "ninjutsu";
+    const antagData   = antagName ? getAntagData(antagName) : null;
+
+    let wVictoire = 50, wNul = 25, wDefaite = 25;
+
+    if (antagData) {
+      // Avantage style
+      if (playerStyle === antagData.weakness) {
+        // Le joueur bat l'ennemi → victoire plus probable
+        wVictoire = Math.round(wVictoire * 1.4);
+        wDefaite  = Math.round(wDefaite  * 0.6);
+      } else if (playerStyle === antagData.resistance) {
+        // L'ennemi résiste → défaite plus probable
+        wVictoire = Math.round(wVictoire * 0.6);
+        wDefaite  = Math.round(wDefaite  * 1.4);
+      }
+    }
+
+    // Bonus inventaire
+    G.inventory.forEach(item => {
+      if (item.type === playerStyle) wVictoire += 8; // tech du bon type
+      if (item.type === "weapon")    wVictoire += 5; // arme générique
+    });
+
+    return [
+      { ...OUTCOMES[0], weight: wVictoire },
+      { ...OUTCOMES[1], weight: wNul      },
+      { ...OUTCOMES[2], weight: wDefaite  },
+    ];
   }
 
   // ── Résultat d'un spin ───────────────────────────────────────
@@ -215,8 +276,8 @@ const Engine = (() => {
   function rankPct()     { return Math.min(G.wins / WINS_PER_RANK * 100, 100); }
 
   return {
-    getState, setPeriode, getStarters, getAntags,
-    setResult, applyOutcome, addLoot, buildLootPool,
+    getState, setPeriode, getStarters, getPersoStyle, getAntags, getAntagData,
+    computeIssueWeights, setResult, applyOutcome, addLoot, buildLootPool,
     newRound, fullReset, currentRank, nextRank, rankPct,
   };
 })();
