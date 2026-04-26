@@ -35,40 +35,38 @@ function showScreen(id) {
   if (el) el.classList.add("active");
 }
 
-// ── PERIOD SELECT ────────────────────────────────────────────
-function buildPeriodScreen() {
-  const container = $("periodCards");
+// ── VILLAGE SELECT ───────────────────────────────────────────
+function buildVillageScreen() {
+  const container = $("villageCards");
   container.textContent = "";
 
-  PERIODES.forEach(p => {
+  VILLAGES.forEach(v => {
     const card = document.createElement("div");
-    card.className = "period-card " + p.cssClass;
-    card.dataset.id = p.id;
+    card.className = "period-card";
+    card.dataset.id = v.short;
 
-    const em  = document.createElement("span"); em.className = "pc-emoji";   em.textContent = p.emoji;
-    const nm  = document.createElement("div");  nm.className = "pc-name";    nm.textContent = p.short;
-    const dc  = document.createElement("div");  dc.className = "pc-desc";    dc.textContent = p.desc;
+    const em = document.createElement("span"); em.className = "pc-emoji";   em.textContent = v.emoji;
+    const nm = document.createElement("div");  nm.className = "pc-name";    nm.textContent = v.short;
+    const dc = document.createElement("div");  dc.className = "pc-desc";    dc.textContent = "Village du " + v.symbol;
 
     card.appendChild(em); card.appendChild(nm); card.appendChild(dc);
-
-    card.addEventListener("click", () => selectPeriod(p.id, card));
+    card.addEventListener("click", () => selectVillage(v.short, card));
     container.appendChild(card);
   });
 }
 
-let _selectedPeriodId = null;
+let _selectedVillageId = null;
 
-function selectPeriod(id, cardEl) {
-  document.querySelectorAll(".period-card").forEach(c => c.classList.remove("selected"));
+function selectVillage(id, cardEl) {
+  document.querySelectorAll("#villageCards .period-card").forEach(c => c.classList.remove("selected"));
   cardEl.classList.add("selected");
-  _selectedPeriodId = id;
-  const btn = $("periodConfirm");
-  btn.classList.add("ready");
+  _selectedVillageId = id;
+  $("villageConfirm").classList.add("ready");
 }
 
-function confirmPeriod() {
-  if (!_selectedPeriodId) return;
-  if (!Engine.setPeriode(_selectedPeriodId)) return;
+function confirmVillage() {
+  if (!_selectedVillageId) return;
+  if (!Engine.setVillage(_selectedVillageId)) return;
   startGame();
 }
 
@@ -166,12 +164,12 @@ function updateInventoryBar() {
 }
 
 // ── ROUND BUILDER ─────────────────────────────────────────────
+// Le village est fixé au départ — on commence directement au Personnage
 const STEPS = [
-  { id:"village",  label:"Village",     canvasId:"cvVillage",  pal:0 },
-  { id:"perso",    label:"Personnage",  canvasId:"cvPerso",    pal:1 },
-  { id:"antag",    label:"Antagoniste", canvasId:"cvAntag",    pal:2 },
-  { id:"issue",    label:"Issue",       canvasId:"cvIssue",    pal:-1 }, // -1 = roue issue spéciale
-  { id:"loot",     label:"Loot",        canvasId:"cvLoot",     pal:-2 }, // -2 = roue loot spéciale
+  { id:"perso",  label:"Personnage",  canvasId:"cvPerso", pal:0 },
+  { id:"antag",  label:"Antagoniste", canvasId:"cvAntag", pal:1 },
+  { id:"issue",  label:"Issue",       canvasId:"cvIssue", pal:-1 },
+  { id:"loot",   label:"Loot",        canvasId:"cvLoot",  pal:-2 },
 ];
 
 const _layerEls = [];
@@ -188,10 +186,6 @@ function buildRound() {
     layer.className = "wheel-layer";
     layer.id = "layer-" + i;
 
-    const lbl = document.createElement("div");
-    lbl.className = "layer-lbl";
-    lbl.textContent = step.label;
-
     const cv = document.createElement("canvas");
     cv.id = step.canvasId;
     cv.width = WheelEngine.SZ; cv.height = WheelEngine.SZ;
@@ -199,27 +193,24 @@ function buildRound() {
 
     const dot = document.createElement("div"); dot.className = "wheel-dot";
 
-    layer.appendChild(lbl); layer.appendChild(cv); layer.appendChild(dot);
+    layer.appendChild(cv); layer.appendChild(dot);
     wrap.appendChild(layer);
     _layerEls.push(layer);
   });
 
-  // Initialiser les roues visibles
+  // Dessiner seulement la première roue, révéler uniquement elle
   _initWheelDraw(0);
-
-  // Révéler uniquement la première
   revealLayer(0);
-  $("stackPtr").classList.remove("show");
+
   $("stepRes").classList.remove("show");
   $("srLbl").textContent = "";
   $("srVal").textContent = "Lance la roue !";
   $("srVal").className   = "sr-val";
+  $("arenaStepLabel").textContent = STEPS[0].label;
 
   const btn = $("spinBtn");
   btn.disabled = false; btn.classList.remove("going");
-  btn.textContent = "⚡ Tourner — Village";
-  $("allBtn").style.display = "";
-  $("allBtn").disabled = false;
+  btn.textContent = "⚡ Tourner";
 
   Engine.newRound();
 }
@@ -240,15 +231,35 @@ function _initWheelDraw(stepIdx) {
 
 function _getItems(stepIdx) {
   switch (stepIdx) {
-    case 0: return VILLAGES.map(v => v.short);
-    case 1: return Engine.getStarters(); // déjà filtrés canBeGenin, retourne noms
-    case 2: return Engine.getAntags().map(a => a.name); // objets → noms pour la roue
+    case 0: return Engine.getStarters();          // Personnage — filtrés canBeGenin
+    case 1: return Engine.getAntags().map(a => a.name); // Antagoniste — selon rang
     default: return [];
   }
 }
 
 function revealLayer(i) {
   if (_layerEls[i]) _layerEls[i].classList.add("vis");
+}
+
+// Fait sortir la roue courante vers le haut, puis fait entrer la suivante
+function transitionToNext(fromIdx, toIdx, onReady) {
+  const from = _layerEls[fromIdx];
+  const to   = _layerEls[toIdx];
+  if (!from || !to) { if (onReady) onReady(); return; }
+
+  // Sortie de la roue précédente
+  from.classList.add("done");
+  from.classList.remove("vis");
+
+  // On prépare la roue suivante juste avant de la faire entrer
+  _initWheelDraw(toIdx);
+
+  // Entrée de la nouvelle roue après un court délai (laisse la sortie se faire)
+  setTimeout(() => {
+    to.classList.add("vis");
+    $("arenaStepLabel").textContent = STEPS[toIdx].label;
+    if (onReady) onReady();
+  }, 320);
 }
 
 // ── SPIN ──────────────────────────────────────────────────────
@@ -261,10 +272,7 @@ function spinCurrent() {
   G.round.spinning = true;
 
   const step = STEPS[_stepIdx];
-  revealLayer(_stepIdx);
-  $("stackPtr").classList.add("show");
-
-  const btn = $("spinBtn");
+  const btn  = $("spinBtn");
   btn.disabled = true; btn.classList.add("going"); btn.textContent = "En rotation...";
 
   let spinPromise;
@@ -272,7 +280,6 @@ function spinCurrent() {
   if (step.pal === -1) {
     // Roue Issue — poids calculés dynamiquement selon style joueur vs ennemi
     const weights = Engine.computeIssueWeights();
-    // Afficher l'analyse de combat avant de tourner
     showCombatAnalysis(weights);
     spinPromise = WheelEngine.spinIssue({
       canvasId: step.canvasId,
@@ -281,7 +288,6 @@ function spinCurrent() {
       onFrame: r => { _stepRots[_stepIdx] = r; },
     }).then(({ targetIndex, finalRotation }) => {
       _stepRots[_stepIdx] = finalRotation;
-      _layerEls[_stepIdx].classList.add("done");
       const outcome = OUTCOMES[targetIndex];
       Engine.setResult("outcome", outcome.short);
       Engine.setResult("outcomeIdx", targetIndex);
@@ -296,7 +302,6 @@ function spinCurrent() {
       onFrame: r => { _stepRots[_stepIdx] = r; },
     }).then(({ targetIndex, finalRotation, lootItem }) => {
       _stepRots[_stepIdx] = finalRotation;
-      _layerEls[_stepIdx].classList.add("done");
       Engine.setResult("loot", lootItem);
       const absorbed = Engine.addLoot(lootItem);
       showStepResult(step.label, lootItem.name, "loot");
@@ -313,16 +318,12 @@ function spinCurrent() {
       onFrame: r => { _stepRots[_stepIdx] = r; },
     }).then(({ targetIndex, finalRotation }) => {
       _stepRots[_stepIdx] = finalRotation;
-      _layerEls[_stepIdx].classList.add("done");
       const result = items[targetIndex];
       Engine.setResult(step.id, result);
-      // Stocker le style si c'est la roue personnage
       if (step.id === "perso") {
         Engine.setResult("persoStyle", Engine.getPersoStyle(result));
       }
       showStepResult(step.label, result, "");
-      // Préparer la prochaine roue
-      if (_stepIdx + 1 < STEPS.length) _initWheelDraw(_stepIdx + 1);
     });
   }
 
@@ -331,23 +332,26 @@ function spinCurrent() {
     btn.classList.remove("going");
 
     if (_stepIdx < STEPS.length - 1) {
+      const prevIdx = _stepIdx;
       _stepIdx++;
-      revealLayer(_stepIdx);
-      btn.disabled = false;
-      btn.textContent = "⚡ Tourner — " + STEPS[_stepIdx].label;
 
-      // Si on vient de finir la roue Issue → appliquer résultat maintenant
-      if (STEPS[_stepIdx - 1].id === "issue") {
-        const G2 = Engine.getState();
-        const result = applyIssue(G2.round.results.outcomeIdx);
-        // Initialiser la roue loot APRÈS l'issue
-        _initWheelDraw(_stepIdx);
-        if (result.gameOver) { setTimeout(showGameOver, 800); return; }
+      // Si on vient de finir la roue Issue → appliquer résultat avant transition
+      if (STEPS[prevIdx].id === "issue") {
+        const result = applyIssue(G.round.results.outcomeIdx);
+        if (result.gameOver) { return; } // gameOver s'occupe de l'overlay
+        // Préparer le pool loot puis transitionner
+        _lootPool = Engine.buildLootPool(8);
       }
+
+      // Transition : roue précédente sort, nouvelle entre
+      transitionToNext(prevIdx, _stepIdx, () => {
+        btn.disabled = false;
+        btn.textContent = "⚡ Tourner";
+      });
+
     } else {
       // Toutes les roues terminées
       btn.textContent = "✓ Round terminé !"; btn.disabled = true;
-      $("allBtn").style.display = "none";
       setTimeout(showDestiny, 700);
     }
   });
@@ -579,7 +583,7 @@ function nextRound() {
   $("destinyPanel").classList.remove("vis");
   $("destinyPanel").style.display = "none";
   _stepIdx  = 0;
-  _stepRots = [0,0,0,0,0];
+  _stepRots = [0, 0, 0, 0, 0];
   buildRound();
   updateHUD();
   updateInventoryBar();
@@ -632,11 +636,11 @@ function showGameOver() {
 function closeGameOver() {
   $("goOv").classList.remove("show");
   Engine.fullReset();
-  _selectedPeriodId = null;
+  _selectedVillageId = null;
   _stepIdx  = 0;
-  _stepRots = [0,0,0,0,0];
-  buildPeriodScreen();
-  showScreen("screenPeriod");
+  _stepRots = [0, 0, 0, 0, 0];
+  buildVillageScreen();
+  showScreen("screenVillage");
 }
 
 // Promotion après un round réussi
@@ -720,6 +724,6 @@ function makeRankEmblem(rank, sz) {
 
 // ── INIT ──────────────────────────────────────────────────────
 window.addEventListener("DOMContentLoaded", () => {
-  buildPeriodScreen();
-  showScreen("screenPeriod");
+  buildVillageScreen();
+  showScreen("screenVillage");
 });

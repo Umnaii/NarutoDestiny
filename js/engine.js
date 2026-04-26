@@ -9,13 +9,15 @@ const Engine = (() => {
 
   // ── État global ──────────────────────────────────────────────
   const G = {
-    // Choix de période (fixé au début de partie)
+    // Village choisi au début de partie (fixé)
+    village: null,
+    // Période tirée aléatoirement à chaque round selon le rang
     periode: null,
 
     // Round courant
     round: {
-      step:    0,      // 0=village 1=perso 2=antag 3=issue 4=loot
-      results: {},     // { village, perso, antag, outcome, loot }
+      step:    0,
+      results: {},     // { village (préfixé), perso, antag, outcome, loot }
       spinning: false,
     },
 
@@ -25,28 +27,43 @@ const Engine = (() => {
 
     // Rang
     rankIdx:  0,
-    wins:     0,       // victoires dans le rang actuel
+    wins:     0,
 
-    // Inventaire (items non utilisés)
-    inventory: [],     // tableau d'objets LOOT_POOL
+    // Inventaire
+    inventory: [],
 
     // Collection de badges
-    badges: [],        // { antag, outcomeShort, outcomeCls, emoji }
+    badges: [],
 
     // Statut global
-    status: "period_select", // "period_select" | "playing" | "gameover" | "victory"
+    status: "village_select",
   };
 
   // ── Accès à l'état ───────────────────────────────────────────
   function getState() { return G; }
 
-  // ── Période ──────────────────────────────────────────────────
-  function setPeriode(id) {
-    const p = PERIODES.find(x => x.id === id);
-    if (!p) return false;
-    G.periode = p;
+  // ── Village choisi au départ ─────────────────────────────────
+  // La période est tirée aléatoirement à chaque round selon le rang
+  function setVillage(villageShort) {
+    const v = VILLAGES.find(x => x.short === villageShort);
+    if (!v) return false;
+    G.village = v;
     G.status  = "playing";
     return true;
+  }
+
+  // Tire une période aléatoire cohérente avec le rang actuel
+  // Genin/Chûnin → Classique ou Ère des Clans / Jônin → Shippuden / Kage → The Last ou Shippuden
+  function _drawPeriode() {
+    const byRank = {
+      0: ["Classique", "Ère des Clans"],              // Genin
+      1: ["Classique", "Shippuden"],                  // Chûnin
+      2: ["Shippuden"],                               // Jônin
+      3: ["Shippuden", "The Last"],                   // Kage
+    };
+    const pool = byRank[G.rankIdx] || ["Classique"];
+    const shortName = pool[Math.floor(Math.random() * pool.length)];
+    return PERIODES.find(p => p.short === shortName) || PERIODES[0];
   }
 
   // ── Starters pour le round courant ───────────────────────────
@@ -254,11 +271,14 @@ const Engine = (() => {
 
   // ── Nouveau round ────────────────────────────────────────────
   function newRound() {
-    G.round = { step: 0, results: {}, spinning: false };
+    // Tire la période aléatoirement selon le rang
+    G.periode = _drawPeriode();
+    G.round   = { step: 0, results: { village: G.village ? G.village.short : null }, spinning: false };
   }
 
   // ── Réinitialisation complète ────────────────────────────────
   function fullReset() {
+    G.village   = null;
     G.periode   = null;
     G.round     = { step: 0, results: {}, spinning: false };
     G.lives     = 3;
@@ -267,7 +287,7 @@ const Engine = (() => {
     G.wins      = 0;
     G.inventory = [];
     G.badges    = [];
-    G.status    = "period_select";
+    G.status    = "village_select";
   }
 
   // ── Rang actuel ──────────────────────────────────────────────
@@ -276,7 +296,7 @@ const Engine = (() => {
   function rankPct()     { return Math.min(G.wins / WINS_PER_RANK * 100, 100); }
 
   return {
-    getState, setPeriode, getStarters, getPersoStyle, getAntags, getAntagData,
+    getState, setVillage, getStarters, getPersoStyle, getAntags, getAntagData,
     computeIssueWeights, setResult, applyOutcome, addLoot, buildLootPool,
     newRound, fullReset, currentRank, nextRank, rankPct,
   };
