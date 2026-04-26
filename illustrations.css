@@ -1,0 +1,184 @@
+/* ============================================================
+   NARUTO DESTINY WHEEL — illustrations.css
+   Styles visuels pour les SVG générés : badges antagonistes,
+   emblèmes de rang, cœurs, icônes d'inventaire.
+   SÉCURITÉ : aucune donnée utilisateur interpolée ici.
+   ============================================================ */
+
+/* ── HEART SVG ── */
+.heart svg { width: 28px; height: 28px; }
+
+/* Cœur plein */
+.heart-full { fill: #E8521A; filter: drop-shadow(0 0 6px rgba(232,82,26,.7)); }
+/* Cœur vide */
+.heart-empty { fill: none; stroke: #3a1010; stroke-width: 2; }
+
+/* ── BADGE ANTAGONISTE ── */
+/* Chaque badge est un SVG généré programmatiquement via js/ui.js.
+   Ces classes sont appliquées dynamiquement sur les éléments générés. */
+
+.badge-wrap {
+  display: inline-block;
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,.6));
+  transition: transform .25s;
+}
+.badge-wrap:hover { transform: scale(1.06) rotate(-2deg); }
+
+/* Animation d'apparition du badge */
+.badge-appear {
+  animation: badgeDrop .7s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes badgeDrop {
+  from { opacity:0; transform:scale(.4) rotate(-20deg); }
+  to   { opacity:1; transform:scale(1) rotate(0); }
+}
+
+/* Badge dans la collection */
+.badge-coll {
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,.5));
+  transition: transform .2s, filter .2s;
+}
+.badge-coll:hover {
+  transform: scale(1.1);
+  filter: drop-shadow(0 4px 10px rgba(232,82,26,.4));
+}
+
+/* Palette couleurs par hash — utilisée dans js/ui.js */
+/* Ces variables sont référencées côté JS pour construire les SVG */
+.bc-0 { --bc1:#E8521A; --bc2:#FF6B2B; --bc3:#B83D0E; }
+.bc-1 { --bc1:#7C3AED; --bc2:#A78BFA; --bc3:#4C1D95; }
+.bc-2 { --bc1:#0891B2; --bc2:#67E8F9; --bc3:#164E63; }
+.bc-3 { --bc1:#DC2626; --bc2:#FCA5A5; --bc3:#7F1D1D; }
+.bc-4 { --bc1:#059669; --bc2:#34D399; --bc3:#064E3B; }
+.bc-5 { --bc1:#D97706; --bc2:#FCD34D; --bc3:#78350F; }
+.bc-6 { --bc1:#BE185D; --bc2:#F9A8D4; --bc3:#831843; }
+
+/* ── EMBLÈMES DE RANG ── */
+/* Tokens visuels par rang — référencés dans js/ui.js */
+
+/* Genin — cercle simple */
+.rank-genin  { --rc: #4ade80; --rsymbol: "忍"; }
+/* Chûnin — pentagone */
+.rank-chunin { --rc: #60a5fa; --rsymbol: "中"; }
+/* Jônin — triangle */
+.rank-jonin  { --rc: #c084fc; --rsymbol: "上"; }
+/* Kage — cercle double */
+.rank-kage   { --rc: #facc15; --rsymbol: "影"; }
+
+/* Glow effect sur l'emblème actif */
+.rank-emblem-active {
+  filter: drop-shadow(0 0 8px currentColor);
+}
+
+/* ── ICÔNES LOOT ── */
+/* Styles pour les icônes d'items dans l'inventaire */
+.loot-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* Rareté des loots */
+.rarity-common   { border-color: rgba(255,255,255,.15) !important; }
+.rarity-uncommon { border-color: rgba(74,222,128,.35) !important; }
+.rarity-rare     { border-color: rgba(96,165,250,.4) !important; }
+.rarity-epic     { border-color: rgba(192,132,252,.45) !important; }
+
+/* ── ROUE LOOT — couleurs spéciales ── */
+/* Les segments de la roue loot ont des couleurs par catégorie */
+/* Ces valeurs hexadécimales sont référencées directement dans js/wheel.js */
+/*
+  Armes       : #B83D0E, #E8521A, #F97316
+  Ninjutsu    : #1D4ED8, #3B82F6, #60a5fa
+  Taijutsu    : #059669, #10B981, #34D399
+  Genjutsu    : #7C3AED, #8B5CF6, #A78BFA
+  Soin        : #BE185D, #EC4899, #F9A8D4
+  Chance      : #D97706, #F59E0B, #FCD34D
+*/
+
+/* ── OUTCOME COLORS ── */
+/* Appliquées sur .sr-val et .d-val selon le résultat */
+.outcome-victory { color: #4ade80; }
+.outcome-hard    { color: #facc15; }
+.outcome-draw    { color: #60a5fa; }
+.outcome-defeat  { color: #EF4444; }
+
+/* ── PÉRIODE CARD ACCENTS ── */
+.pc-classique  { --pc-accent: #E8521A; }
+.pc-shippuden  { --pc-accent: #DC2626; }
+.pc-thelast    { --pc-accent: #7C3AED; }
+.pc-ereclans   { --pc-accent: #D97706; }
+
+.period-card::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse 80% 60% at 50% 0%, var(--pc-accent, transparent) 0%, transparent 65%);
+  opacity: 0; border-radius: inherit; transition: opacity .3s;
+}
+.period-card:hover::after  { opacity: .07; }
+.period-card.selected::after { opacity: .1; }
+
+/* ── LOOT BADGE (mini badge dans le panneau résultat) ── */
+.loot-panel {
+  background: linear-gradient(135deg, rgba(74,222,128,.08), rgba(16,185,129,.05));
+  border: 1px solid rgba(74,222,128,.2);
+  border-radius: 12px;
+  padding: 16px 20px;
+  text-align: center;
+  margin-top: 14px;
+}
+.loot-panel-title {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 10px; letter-spacing: .24em;
+  color: #4ade80; text-transform: uppercase; margin-bottom: 10px;
+}
+.loot-item-big {
+  font-size: 28px; display: block; margin-bottom: 6px;
+}
+.loot-item-name {
+  font-size: 17px; font-weight: 700; color: var(--gold-light); display: block;
+}
+.loot-item-type {
+  font-size: 13px; color: var(--text-muted); margin-top: 3px;
+}
+
+/* ── BADGE REVEAL (après combat) ── */
+.badge-rev-section {
+  text-align: center;
+  margin-top: 16px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255,255,255,.06);
+}
+.badge-rev-title {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 10px; letter-spacing: .24em;
+  color: var(--gold); text-transform: uppercase; margin-bottom: 14px;
+}
+.badge-rev-name {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 13px; color: var(--gold-light); margin-top: 10px;
+}
+.badge-rev-sub { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+
+/* ── CHANCE ITEM ACTIVATION ── */
+.chance-used-notice {
+  background: rgba(212,175,55,.1);
+  border: 1px solid rgba(212,175,55,.3);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px; color: var(--gold);
+  font-weight: 600; text-align: center;
+  margin-top: 10px;
+  animation: fadeIn .4s ease both;
+}
+
+/* ── HEAL ACTIVATION ── */
+.heal-used-notice {
+  background: rgba(74,222,128,.1);
+  border: 1px solid rgba(74,222,128,.3);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px; color: var(--green);
+  font-weight: 600; text-align: center;
+  margin-top: 10px;
+  animation: fadeIn .4s ease both;
+}

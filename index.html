@@ -3,733 +3,240 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<!-- SÉCURITÉ : CSP — autorise uniquement fonts.googleapis.com en ressource externe.
-     Aucun script inline tiers, aucune image externe, aucun frame. -->
+<!-- SÉCURITÉ : CSP — autorise uniquement fonts.googleapis.com en ressource CSS externe.
+     Aucun script tiers, aucune image externe, aucun framing autorisé. -->
 <meta http-equiv="Content-Security-Policy"
   content="default-src 'self';
-           script-src 'unsafe-inline';
+           script-src 'self' 'unsafe-inline';
            style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
            font-src https://fonts.gstatic.com;
            img-src 'self' data:;
            frame-ancestors 'none';">
 <title>Naruto Destiny Wheel</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
-<style>
-:root {
-  --orange:#E8521A; --orange-dark:#B83D0E; --orange-light:#F97316;
-  --dark:#0A0A0F; --dark2:#12121A; --dark3:#1A1A25;
-  --panel:#16161F; --panel2:#1E1E2C;
-  --text:#F0EAD6; --text-muted:#8A8370;
-  --gold:#D4AF37; --gold-light:#F0C94A;
-  --border:rgba(232,82,26,0.25);
-}
-*{margin:0;padding:0;box-sizing:border-box;}
-body{background:var(--dark);color:var(--text);font-family:'Rajdhani',sans-serif;min-height:100vh;overflow-x:hidden;}
-body::before{content:'';position:fixed;inset:0;background:
-  radial-gradient(ellipse 60% 40% at 50% 0%,rgba(232,82,26,.12) 0%,transparent 70%),
-  radial-gradient(ellipse 40% 60% at 10% 80%,rgba(100,50,20,.08) 0%,transparent 60%),
-  radial-gradient(ellipse 40% 60% at 90% 20%,rgba(50,80,180,.05) 0%,transparent 60%);
-  pointer-events:none;z-index:0;}
-.bg-pattern{position:fixed;inset:0;opacity:.025;background-image:repeating-linear-gradient(45deg,var(--orange) 0px,var(--orange) 1px,transparent 1px,transparent 40px);pointer-events:none;z-index:0;}
-.wrap{max-width:860px;margin:0 auto;padding:0 20px 100px;position:relative;z-index:1;}
-
-/* HEADER */
-header{text-align:center;padding:44px 20px 24px;}
-.hemblem{display:inline-block;width:58px;height:58px;margin-bottom:12px;}
-h1{font-family:'Cinzel Decorative',serif;font-size:clamp(24px,5vw,46px);font-weight:900;color:var(--orange);letter-spacing:.04em;line-height:1.1;text-shadow:0 0 40px rgba(232,82,26,.4),0 2px 0 rgba(0,0,0,.8);}
-h1 span{display:block;font-size:.42em;color:var(--gold);letter-spacing:.26em;margin-top:6px;}
-.hline{width:180px;height:1px;background:linear-gradient(90deg,transparent,var(--orange),transparent);margin:16px auto 0;}
-
-/* RANK BAR */
-.rank-bar{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px 22px;margin-bottom:32px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
-.rank-info{flex:1;min-width:180px;}
-.rank-title-lbl{font-family:'Cinzel Decorative',serif;font-size:10px;letter-spacing:.22em;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px;}
-.rank-name{font-family:'Cinzel Decorative',serif;font-size:20px;font-weight:700;line-height:1;margin-bottom:10px;}
-.rank-track{height:10px;background:var(--dark3);border-radius:99px;overflow:hidden;}
-.rank-fill{height:100%;border-radius:99px;width:0%;transition:width .85s cubic-bezier(.4,0,.2,1);}
-.rank-caption{font-size:13px;color:var(--text-muted);margin-top:6px;font-weight:500;}
-.rank-caption strong{color:var(--text);}
-
-/* STACK */
-.arena{display:flex;flex-direction:column;align-items:center;gap:0;margin-bottom:36px;}
-.arena-intro{text-align:center;font-size:15px;color:var(--text-muted);max-width:440px;margin-bottom:26px;font-weight:500;line-height:1.6;}
-
-.stack-wrap{position:relative;width:310px;height:310px;margin:0 auto 22px;}
-.wheel-layer{
-  position:absolute;inset:0;
-  display:flex;align-items:center;justify-content:center;
-  border-radius:50%;
-  opacity:0;transform:translateY(70px) scale(.84);
-  transition:opacity .5s cubic-bezier(.4,0,.2,1),transform .55s cubic-bezier(.34,1.3,.64,1),box-shadow .4s;
-  pointer-events:none;overflow:visible;
-}
-.wheel-layer.vis{opacity:1;transform:translateY(0) scale(1);pointer-events:auto;}
-.wheel-layer.done-l{box-shadow:0 0 0 3px rgba(212,175,55,.55);}
-
-.stack-ptr{
-  position:absolute;top:-16px;left:50%;transform:translateX(-50%);
-  width:0;height:0;
-  border-left:10px solid transparent;border-right:10px solid transparent;
-  border-top:22px solid var(--orange);
-  filter:drop-shadow(0 2px 6px rgba(232,82,26,.7));
-  z-index:50;opacity:0;transition:opacity .3s;
-}
-.stack-ptr.show{opacity:1;}
-
-.layer-lbl{
-  position:absolute;top:-16px;left:50%;transform:translateX(-50%);
-  background:var(--dark3);border:1px solid var(--border);border-radius:20px;
-  padding:3px 12px;font-family:'Cinzel Decorative',serif;font-size:9px;letter-spacing:.2em;
-  color:var(--orange);white-space:nowrap;z-index:20;
-}
-.wheel-dot{
-  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-  width:24px;height:24px;border-radius:50%;
-  background:var(--dark);border:3px solid var(--orange);
-  box-shadow:0 0 10px rgba(232,82,26,.5);z-index:15;pointer-events:none;
-}
-
-/* CONTROLS */
-.ctrl{display:flex;flex-direction:column;align-items:center;gap:11px;width:310px;}
-.step-res{
-  width:100%;background:var(--dark3);border-radius:10px;border:1px solid rgba(255,255,255,.07);
-  padding:10px 16px;text-align:center;min-height:44px;display:flex;align-items:center;justify-content:center;
-  opacity:0;transition:opacity .4s;
-}
-.step-res.show{opacity:1;}
-.sr-lbl{font-size:10px;color:var(--text-muted);letter-spacing:.15em;font-family:'Cinzel Decorative',serif;display:block;margin-bottom:2px;}
-.sr-val{font-size:18px;font-weight:700;color:var(--gold-light);}
-
-.spin-btn{width:100%;padding:13px 20px;border:none;border-radius:11px;background:linear-gradient(135deg,var(--orange-dark),var(--orange));color:#fff;font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:all .2s;}
-.spin-btn:hover:not(:disabled){background:linear-gradient(135deg,var(--orange),var(--orange-light));transform:translateY(-1px);box-shadow:0 6px 20px rgba(232,82,26,.4);}
-.spin-btn:active:not(:disabled){transform:scale(.98);}
-.spin-btn:disabled{opacity:.45;cursor:not-allowed;transform:none;}
-.spin-btn.going{background:linear-gradient(135deg,#2a2a2a,#333);}
-
-.all-btn{display:inline-flex;align-items:center;gap:10px;padding:15px 42px;border:none;border-radius:13px;background:linear-gradient(135deg,var(--orange-dark),var(--orange),var(--orange-light));color:#fff;font-family:'Cinzel Decorative',serif;font-size:14px;font-weight:700;cursor:pointer;transition:all .25s;box-shadow:0 8px 26px rgba(232,82,26,.35);position:relative;overflow:hidden;}
-.all-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,transparent 30%,rgba(255,255,255,.14) 50%,transparent 70%);transform:translateX(-100%);transition:transform .5s;}
-.all-btn:hover::before{transform:translateX(100%);}
-.all-btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 12px 34px rgba(232,82,26,.48);}
-.all-btn:disabled{opacity:.5;cursor:not-allowed;transform:none;}
-
-/* DESTINY PANEL */
-.destiny{background:var(--panel);border:1px solid rgba(212,175,55,.3);border-radius:20px;padding:30px;margin-top:20px;position:relative;overflow:hidden;opacity:0;transform:translateY(20px);transition:opacity .5s,transform .5s;}
-.destiny.vis{opacity:1;transform:translateY(0);}
-.destiny::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),var(--orange),var(--gold),transparent);}
-.d-title{font-family:'Cinzel Decorative',serif;font-size:11px;letter-spacing:.28em;color:var(--gold);text-transform:uppercase;text-align:center;margin-bottom:22px;}
-.d-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:18px;}
-.d-item{background:var(--dark3);border-radius:10px;padding:13px 16px;border:1px solid rgba(255,255,255,.06);}
-.d-lbl{font-size:10px;color:var(--orange);letter-spacing:.2em;text-transform:uppercase;font-weight:700;margin-bottom:4px;font-family:'Cinzel Decorative',serif;}
-.d-val{font-size:18px;font-weight:700;color:var(--gold-light);line-height:1.2;}
-.d-sub{font-size:12px;color:var(--text-muted);margin-top:3px;font-weight:500;}
-.d-story{padding:16px 20px;background:linear-gradient(135deg,rgba(232,82,26,.08),rgba(212,175,55,.05));border-radius:10px;border:1px solid rgba(232,82,26,.14);font-size:16px;line-height:1.7;color:var(--text);font-weight:500;margin-bottom:20px;}
-
-/* BADGE REVEAL */
-.badge-rev{text-align:center;margin-top:6px;}
-.badge-rev-ttl{font-family:'Cinzel Decorative',serif;font-size:11px;letter-spacing:.24em;color:var(--gold);text-transform:uppercase;margin-bottom:14px;}
-.badge-anim{display:inline-block;animation:bdrop .7s cubic-bezier(.34,1.56,.64,1) both;}
-@keyframes bdrop{from{opacity:0;transform:scale(.45) rotate(-18deg);}to{opacity:1;transform:scale(1) rotate(0);}}
-.badge-nm{font-family:'Cinzel Decorative',serif;font-size:13px;color:var(--gold-light);margin-top:10px;letter-spacing:.08em;}
-.badge-sb{font-size:12px;color:var(--text-muted);margin-top:3px;}
-
-/* COLLECTION */
-.coll{margin-top:44px;}
-.coll-ttl{font-family:'Cinzel Decorative',serif;font-size:12px;letter-spacing:.24em;color:var(--orange);text-transform:uppercase;text-align:center;margin-bottom:5px;}
-.coll-sub{text-align:center;font-size:14px;color:var(--text-muted);margin-bottom:22px;}
-.badges-grid{display:flex;flex-wrap:wrap;gap:16px;justify-content:center;}
-.bslot{width:100px;text-align:center;animation:slin .5s cubic-bezier(.34,1.26,.64,1) both;}
-@keyframes slin{from{opacity:0;transform:scale(.65);}to{opacity:1;transform:scale(1);}}
-.bslot-nm{font-size:11px;color:var(--text-muted);margin-top:7px;font-weight:600;line-height:1.3;}
-.bslot-out{font-size:11px;margin-top:2px;font-weight:700;}
-.ov{color:#4ade80;} .oh{color:#facc15;} .od{color:#60a5fa;}
-
-/* PROMO OVERLAY */
-.promo-ov{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:999;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .4s;}
-.promo-ov.show{opacity:1;pointer-events:auto;}
-.promo-box{background:var(--panel);border:1px solid rgba(212,175,55,.5);border-radius:22px;padding:46px 38px;text-align:center;max-width:400px;width:90%;animation:pin .6s cubic-bezier(.34,1.26,.64,1) both;}
-@keyframes pin{from{transform:scale(.65);opacity:0;}to{transform:scale(1);opacity:1;}}
-.p-lbl{font-family:'Cinzel Decorative',serif;font-size:10px;letter-spacing:.3em;color:var(--gold);text-transform:uppercase;margin-bottom:14px;}
-.p-ttl{font-family:'Cinzel Decorative',serif;font-size:clamp(22px,5vw,34px);font-weight:900;color:var(--orange);line-height:1.1;margin-bottom:8px;text-shadow:0 0 30px rgba(232,82,26,.5);}
-.p-sub{font-size:16px;color:var(--text-muted);margin-bottom:28px;font-weight:500;}
-.p-close{padding:12px 34px;border:none;border-radius:11px;background:linear-gradient(135deg,var(--orange-dark),var(--orange));color:#fff;font-family:'Cinzel Decorative',serif;font-size:13px;cursor:pointer;transition:all .2s;}
-.p-close:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(232,82,26,.4);}
-
-/* KAGE OVERLAY */
-.kage-ov{position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:1000;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .5s;}
-.kage-ov.show{opacity:1;pointer-events:auto;}
-.kage-box{text-align:center;padding:48px 28px;max-width:480px;}
-.kage-ej{font-size:68px;animation:kfl 2.5s ease-in-out infinite;}
-@keyframes kfl{0%,100%{transform:translateY(0);}50%{transform:translateY(-12px);}}
-.kage-ttl{font-family:'Cinzel Decorative',serif;font-size:clamp(26px,6vw,44px);font-weight:900;color:var(--gold);line-height:1.1;margin:18px 0 10px;text-shadow:0 0 60px rgba(212,175,55,.6);}
-.kage-sub{font-size:17px;color:var(--text-muted);margin-bottom:32px;}
-.kage-close{padding:13px 38px;border:none;border-radius:12px;background:linear-gradient(135deg,var(--gold),var(--gold-light));color:var(--dark);font-family:'Cinzel Decorative',serif;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;}
-.kage-close:hover{transform:translateY(-2px);box-shadow:0 8px 26px rgba(212,175,55,.5);}
-
-.reset-btn{display:block;margin:0 auto;padding:10px 30px;border:1px solid var(--border);border-radius:10px;background:transparent;color:var(--text-muted);font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:all .2s;}
-.reset-btn:hover{border-color:var(--orange);color:var(--orange);background:rgba(232,82,26,.06);}
-
-.all-wrap{text-align:center;margin-top:22px;}
-
-@media(max-width:480px){
-  .stack-wrap{width:260px;height:260px;}
-  .ctrl{width:260px;}
-  .rank-bar{flex-direction:column;gap:12px;text-align:center;}
-}
-</style>
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/illustrations.css">
 </head>
 <body>
-<div class="bg-pattern"></div>
-<div class="wrap">
+<div class="bg-pattern" aria-hidden="true"></div>
 
-  <header>
-    <svg class="hemblem" viewBox="0 0 64 64" fill="none">
-      <circle cx="32" cy="32" r="30" stroke="#E8521A" stroke-width="1.5" opacity=".4"/>
-      <path d="M32 8C32 8 50 18 52 32C54 46 42 56 32 56C22 56 10 46 12 32C14 18 32 8 32 8Z" fill="#E8521A" opacity=".85"/>
-      <path d="M32 16C32 16 44 23 45 32C46 41 38 48 32 48C26 48 18 41 19 32C20 23 32 16 32 16Z" fill="#0A0A0F"/>
-      <path d="M32 12C28 24 20 28 20 38C20 44 25 50 32 52C32 52 32 32 32 12Z" fill="#E8521A" opacity=".5"/>
-      <circle cx="32" cy="32" r="4" fill="#E8521A"/>
-    </svg>
-    <h1>Naruto Destiny Wheel<span>Ton destin de ninja t'attend</span></h1>
-    <div class="hline"></div>
-  </header>
+<!-- ══════════════════════════════════════════════════════════
+     ÉCRAN 1 — SÉLECTION DE PÉRIODE
+     ══════════════════════════════════════════════════════════ -->
+<div id="screenPeriod" class="screen active">
+  <div class="wrap">
 
-  <!-- RANK BAR -->
-  <div class="rank-bar">
-    <svg id="rankEmblem" width="60" height="60" viewBox="0 0 60 60" style="flex-shrink:0"></svg>
-    <div class="rank-info">
-      <div class="rank-title-lbl">Ton rang actuel</div>
-      <div class="rank-name" id="rankName">Genin</div>
-      <div class="rank-track"><div class="rank-fill" id="rankFill"></div></div>
-      <div class="rank-caption"><strong id="rankWC">0</strong> / <strong id="rankWM">5</strong> victoires pour atteindre <span id="rankNxt">Chûnin</span></div>
-    </div>
+    <header>
+      <svg class="h-emblem" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+        <circle cx="32" cy="32" r="30" stroke="#E8521A" stroke-width="1.5" opacity=".4"/>
+        <path d="M32 8C32 8 50 18 52 32C54 46 42 56 32 56C22 56 10 46 12 32C14 18 32 8 32 8Z" fill="#E8521A" opacity=".85"/>
+        <path d="M32 16C32 16 44 23 45 32C46 41 38 48 32 48C26 48 18 41 19 32C20 23 32 16 32 16Z" fill="#0A0A0F"/>
+        <path d="M32 12C28 24 20 28 20 38C20 44 25 50 32 52C32 52 32 32 32 12Z" fill="#E8521A" opacity=".5"/>
+        <circle cx="32" cy="32" r="4" fill="#E8521A"/>
+      </svg>
+      <h1>Naruto Destiny Wheel<span>Choisir une ère pour commencer</span></h1>
+      <div class="h-line" aria-hidden="true"></div>
+    </header>
+
+    <p class="period-intro">
+      Sélectionne l'ère dans laquelle se déroulera ton aventure ninja.
+      Ce choix est définitif pour toute la partie.
+    </p>
+
+    <!-- Cartes injectées par buildPeriodScreen() dans ui.js -->
+    <div class="period-cards" id="periodCards" role="radiogroup" aria-label="Choisir une période"></div>
+
+    <button class="period-confirm" id="periodConfirm" onclick="confirmPeriod()" aria-label="Confirmer la période choisie">
+      Commencer l'aventure →
+    </button>
+
   </div>
+</div>
 
-  <!-- STACK ARENA -->
-  <div class="arena">
-    <p class="arena-intro">Les roues du destin s'empilent au fil de ton aventure. Tourne chacune pour avancer vers ta légende.</p>
+<!-- ══════════════════════════════════════════════════════════
+     ÉCRAN 2 — JEU
+     ══════════════════════════════════════════════════════════ -->
+<div id="screenGame" class="screen">
+  <div class="wrap">
 
-    <div class="stack-wrap" id="stackWrap">
-      <div class="stack-ptr" id="stackPtr"></div>
-      <!-- wheel layers injected by JS -->
-    </div>
+    <header>
+      <svg class="h-emblem" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+        <circle cx="32" cy="32" r="30" stroke="#E8521A" stroke-width="1.5" opacity=".4"/>
+        <path d="M32 8C32 8 50 18 52 32C54 46 42 56 32 56C22 56 10 46 12 32C14 18 32 8 32 8Z" fill="#E8521A" opacity=".85"/>
+        <path d="M32 16C32 16 44 23 45 32C46 41 38 48 32 48C26 48 18 41 19 32C20 23 32 16 32 16Z" fill="#0A0A0F"/>
+        <path d="M32 12C28 24 20 28 20 38C20 44 25 50 32 52C32 52 32 32 32 12Z" fill="#E8521A" opacity=".5"/>
+        <circle cx="32" cy="32" r="4" fill="#E8521A"/>
+      </svg>
+      <h1>Naruto Destiny Wheel<span>Ton destin de ninja t'attend</span></h1>
+      <div class="h-line" aria-hidden="true"></div>
+    </header>
 
-    <div class="ctrl">
-      <div class="step-res" id="stepRes">
-        <div>
-          <span class="sr-lbl" id="srLbl"></span>
-          <span class="sr-val" id="srVal">Lance la première roue !</span>
+    <!-- HUD : vies + rang -->
+    <div class="hud" role="region" aria-label="État du joueur">
+
+      <div class="hud-lives">
+        <div class="lives-label">Vies</div>
+        <div class="lives-hearts" id="livesHearts" aria-live="polite"></div>
+      </div>
+
+      <div class="hud-rank">
+        <div class="rank-emblem-wrap">
+          <svg id="rankEmblemHUD" width="52" height="52" viewBox="0 0 52 52" aria-hidden="true"></svg>
+        </div>
+        <div class="rank-text">
+          <div class="rank-name-lbl" id="rankNameHUD">Genin</div>
+          <div class="rank-track">
+            <div class="rank-fill" id="rankFillHUD" style="width:0%"></div>
+          </div>
+          <div class="rank-caption">
+            <strong id="rankWinsC">0</strong> /
+            <strong id="rankWinsM">5</strong> vers
+            <span id="rankNextN">Chûnin</span>
+          </div>
         </div>
       </div>
-      <button class="spin-btn" id="spinBtn" onclick="spinCurrent()">⚡ Tourner</button>
+
     </div>
 
-    <div class="all-wrap">
-      <button class="all-btn" id="allBtn" onclick="spinAll()">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/><polyline points="21 3 21 9 15 9"/></svg>
-        Révéler mon destin
-      </button>
+    <!-- Inventaire -->
+    <div class="inventory" role="region" aria-label="Inventaire">
+      <div class="inv-label">Inventaire</div>
+      <div class="inv-items" id="invItems" aria-live="polite">
+        <span class="inv-empty">Inventaire vide — gagne des combats pour looter !</span>
+      </div>
     </div>
-  </div>
 
-  <!-- DESTINY -->
-  <div class="destiny" id="destinyPanel">
-    <div class="d-title">✦ Ton aventure ninja ✦</div>
-    <div class="d-grid" id="dGrid"></div>
-    <div class="d-story" id="dStory"></div>
-    <div class="badge-rev" id="badgeRev" style="display:none">
-      <div class="badge-rev-ttl">⚔ Ennemi vaincu — Badge obtenu ⚔</div>
-      <div class="badge-anim" id="badgeSvg"></div>
-      <div class="badge-nm" id="badgeNm"></div>
-      <div class="badge-sb" id="badgeSb"></div>
+    <!-- Arena : roues empilées -->
+    <div class="arena">
+
+      <div class="arena-step-label" id="arenaStepLabel">
+        Tourne les roues pour révéler ton destin
+      </div>
+
+      <div class="stack-wrap" id="stackWrap" role="region" aria-label="Roues du destin">
+        <div class="stack-ptr" id="stackPtr" aria-hidden="true"></div>
+        <!-- Les couches de roues sont injectées par buildRound() dans ui.js -->
+      </div>
+
+      <div class="ctrl">
+        <div class="step-res" id="stepRes" aria-live="assertive">
+          <div>
+            <span class="sr-lbl" id="srLbl"></span>
+            <span class="sr-val" id="srVal">Lance la roue !</span>
+          </div>
+        </div>
+        <button class="btn-spin" id="spinBtn" onclick="spinCurrent()">⚡ Tourner</button>
+      </div>
+
+      <div class="all-wrap">
+        <button class="btn-all" id="allBtn" onclick="spinAll()">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+            <polyline points="21 3 21 9 15 9"/>
+          </svg>
+          Révéler mon destin
+        </button>
+      </div>
+
     </div>
-    <button class="reset-btn" style="margin-top:22px" onclick="resetRound()">↺ Nouvelle aventure</button>
-  </div>
 
-  <!-- COLLECTION -->
-  <div class="coll" id="collSec" style="display:none">
-    <div class="coll-ttl">Tableau des victoires</div>
-    <div class="coll-sub" id="collSub"></div>
-    <div class="badges-grid" id="collGrid"></div>
-  </div>
+    <!-- Panneau résultat du round -->
+    <div class="destiny" id="destinyPanel" role="region" aria-label="Résultat du round" aria-live="polite">
+      <div class="d-title">✦ Ton aventure ninja ✦</div>
 
+      <div class="d-grid" id="dGrid"></div>
+      <div class="d-story" id="dStory"></div>
+
+      <!-- Loot obtenu -->
+      <div class="loot-panel" id="lootPanel" style="display:none">
+        <div class="loot-panel-title">⚡ Butin de guerre ⚡</div>
+        <span class="loot-item-big" id="lootItemIcon"></span>
+        <span class="loot-item-name" id="lootItemName"></span>
+        <div class="loot-item-type" id="lootItemType"></div>
+        <div class="d-sub" style="margin-top:6px" id="lootItemDesc"></div>
+      </div>
+
+      <!-- Badge antagoniste -->
+      <div class="badge-rev-section" id="badgeSection" style="display:none">
+        <div class="badge-rev-title">⚔ Ennemi vaincu — Badge obtenu ⚔</div>
+        <div class="badge-wrap badge-appear" id="badgeSvgWrap"></div>
+        <div class="badge-rev-name" id="badgeNm"></div>
+        <div class="badge-rev-sub" id="badgeSb"></div>
+      </div>
+
+      <button class="btn-next-round" onclick="nextRound()">⚡ Round suivant</button>
+      <button class="btn-ghost" style="margin-top:10px" onclick="confirmRestart()">↺ Recommencer une partie</button>
+    </div>
+
+    <!-- Collection -->
+    <div class="coll" id="collSection" role="region" aria-label="Collection de badges">
+      <div class="coll-title">Tableau des victoires</div>
+      <div class="coll-sub" id="collSub"></div>
+      <div class="badges-grid" id="collGrid"></div>
+    </div>
+
+  </div>
 </div>
 
-<!-- PROMO OVERLAY -->
-<div class="promo-ov" id="promoOv">
-  <div class="promo-box">
-    <div class="p-lbl">Promotion</div>
-    <div class="p-ttl" id="pTtl"></div>
-    <div class="p-sub" id="pSub"></div>
-    <svg id="pEmb" width="90" height="90" viewBox="0 0 90 90" style="margin:0 auto 22px;display:block"></svg>
-    <button class="p-close" onclick="closePromo()">Continuer l'aventure</button>
+<!-- ══════════════════════════════════════════════════════════
+     OVERLAYS
+     ══════════════════════════════════════════════════════════ -->
+
+<!-- Promotion -->
+<div class="overlay overlay-bg-dark" id="promoOv" role="dialog" aria-modal="true" aria-labelledby="promoTitle">
+  <div class="ov-box promo-border">
+    <div class="ov-lbl">Promotion de rang</div>
+    <div class="ov-title" id="promoTitle"></div>
+    <div class="ov-sub"   id="promoSub"></div>
+    <svg id="promoEmb" class="ov-emblem" width="88" height="88" viewBox="0 0 88 88" aria-hidden="true"></svg>
+    <button class="btn-next-round" onclick="closePromo()">Continuer l'aventure</button>
   </div>
 </div>
 
-<!-- KAGE OVERLAY -->
-<div class="kage-ov" id="kageOv">
-  <div class="kage-box">
-    <div class="kage-ej">🏯</div>
-    <div class="kage-ttl" id="kageTtl">Tu es devenu Kage !</div>
-    <div class="kage-sub" id="kageSub"></div>
-    <svg id="kageEmb" width="110" height="110" viewBox="0 0 110 110" style="margin:0 auto 26px;display:block"></svg>
-    <button class="kage-close" onclick="closeKage()">Une nouvelle ère commence</button>
+<!-- Kage / Victoire -->
+<div class="overlay overlay-bg-kage" id="kageOv" role="dialog" aria-modal="true" aria-labelledby="kageTtl">
+  <div class="ov-box wide ov-border-gold">
+    <span class="kage-float" aria-hidden="true">🏯</span>
+    <div class="ov-title gold" id="kageTtl">Tu es Kage !</div>
+    <div class="ov-sub"       id="kageSub"></div>
+    <svg id="kageEmb" class="ov-emblem" width="108" height="108" viewBox="0 0 108 108" aria-hidden="true"></svg>
+    <button class="kage-close btn-next-round" onclick="closeKage()">Une nouvelle ère s'ouvre</button>
   </div>
 </div>
 
+<!-- Game Over -->
+<div class="overlay overlay-bg-over" id="goOv" role="dialog" aria-modal="true" aria-labelledby="goTitle">
+  <div class="ov-box ov-border-red">
+    <span class="gameover-skull" aria-hidden="true">💀</span>
+    <div class="ov-title red" id="goTitle">Tu as succombé</div>
+    <div class="ov-sub">
+      Tombé à <strong id="goVillage"></strong> face à <strong id="goAntag"></strong>.<br>
+      <span id="goBadges"></span> badges collectés.
+    </div>
+    <button class="btn-next-round" style="margin-top:24px" onclick="closeGameOver()">Recommencer</button>
+  </div>
+</div>
+
+<!-- ── SCRIPTS — ordre d'exécution important ── -->
+<script src="js/data.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/wheel.js"></script>
+<script src="js/ui.js"></script>
 <script>
-// ============================================================
-// SÉCURITÉ — Règles pour toutes les contributions
-// ============================================================
-// Contexte : site statique public, sans backend, sans données utilisateur.
-// RÈGLE 1 — Jamais de innerHTML avec variable non maîtrisée.
-//   ✅ el.textContent = val
-//   ✅ el.innerHTML = "<span>HTML statique connu</span>"
-//   ❌ el.innerHTML = `<div>${val}</div>`
-// RÈGLE 2 — Toute future donnée variable passe par sanitize().
-// RÈGLE 3 — Aucune clé API / token / secret dans ce fichier (code public GitHub).
-// RÈGLE 4 — Pas de JS externe CDN. Google Fonts en CSS uniquement.
-// RÈGLE 5 — Mettre à jour la CSP si nouvelles origines externes ajoutées.
-// ============================================================
-
-function sanitize(str){const e=document.createElement("div");e.textContent=String(str);return e.innerHTML;}
-if(window.self!==window.top){document.documentElement.style.display="none";window.top.location=window.self.location;}
-
-// ── DATA ──────────────────────────────────────────────────────
-
-const WINS_PER_RANK = 5;
-
-const RANKS = [
-  {name:"Genin",  next:"Chûnin",color:"#4ade80",title:"Le voyage commence"},
-  {name:"Chûnin", next:"Jônin", color:"#60a5fa",title:"Tu t'imposes"},
-  {name:"Jônin",  next:"Kage",  color:"#c084fc",title:"L'élite des ninjas"},
-  {name:"Kage",   next:null,    color:"#facc15",title:"Le sommet est atteint"},
-];
-
-const DATA = {
-  periodes:[
-    {short:"Classique",    emoji:"📜",desc:"L'ère de l'Académie et des premières missions"},
-    {short:"Shippuden",    emoji:"🔥",desc:"L'ère de l'Akatsuki et de la 4ème Guerre Ninja"},
-    {short:"The Last",     emoji:"🌙",desc:"Deux ans après la Grande Guerre"},
-    {short:"Boruto",       emoji:"⚡",desc:"L'ère de la prochaine génération"},
-    {short:"Ère des Clans",emoji:"⚔️",desc:"Avant la fondation des villages"},
-  ],
-  villages:[
-    {short:"Konoha",emoji:"🍃",symbol:"Feuille"},
-    {short:"Suna",  emoji:"🏜️",symbol:"Vent"},
-    {short:"Kiri",  emoji:"🌊",symbol:"Eau"},
-    {short:"Kumo",  emoji:"⚡",symbol:"Foudre"},
-    {short:"Iwa",   emoji:"🪨",symbol:"Terre"},
-    {short:"Oto",   emoji:"🎵",symbol:"Son"},
-    {short:"Taki",  emoji:"💧",symbol:"Cascade"},
-  ],
-  outcomes:[
-    {short:"Victoire éclatante",xp:3,cls:"ov",emoji:"🏆"},
-    {short:"Victoire difficile", xp:2,cls:"oh",emoji:"⚔️"},
-    {short:"Match nul héroïque", xp:1,cls:"od",emoji:"🤝"},
-  ],
-};
-
-const STARTERS={
-  "Classique-Konoha":["Naruto Uzumaki","Sasuke Uchiha","Sakura Haruno","Rock Lee","Neji Hyûga","Hinata Hyûga"],
-  "Classique-Suna":["Gaara","Kankuro","Temari"],
-  "Classique-Kiri":["Zabuza Momochi (jeune)","Haku (jeune)"],
-  "Classique-Kumo":["Killer B (jeune)","Yugito Nii (jeune)"],
-  "Classique-Iwa":["Kurotsuchi (jeune)","Akatsuchi (jeune)"],
-  "Classique-Oto":["Dosu Kinuta","Zaku Abumi","Kin Tsuchi"],
-  "Classique-Taki":["Fuu (jeune)"],
-  "Shippuden-Konoha":["Naruto Uzumaki (ado)","Sakura Haruno (ado)","Sai","Yamato","Kakashi Hatake"],
-  "Shippuden-Suna":["Gaara (Kazekage)","Temari","Kankuro"],
-  "Shippuden-Kiri":["Mei Terumi","Chojuro","Ao"],
-  "Shippuden-Kumo":["Killer B","A (Raikage)","Yugito Nii"],
-  "Shippuden-Iwa":["Onoki (Tsuchikage)","Kurotsuchi","Akatsuchi"],
-  "Shippuden-Oto":["Kabuto Yakushi","Jugo","Suigetsu"],
-  "Shippuden-Taki":["Fuu"],
-  "The Last-Konoha":["Naruto Uzumaki (adulte)","Hinata Hyûga","Sakura Haruno","Sai","Shikamaru"],
-  "The Last-Suna":["Gaara","Temari"],
-  "The Last-Kiri":["Mei Terumi","Chojuro"],
-  "The Last-Kumo":["Killer B","Omoi"],
-  "The Last-Iwa":["Kurotsuchi"],
-  "The Last-Oto":["Kabuto Yakushi"],
-  "The Last-Taki":["Fuu"],
-  "Boruto-Konoha":["Boruto Uzumaki","Sarada Uchiha","Mitsuki","Shikadai","Inojin","ChoCho"],
-  "Boruto-Suna":["Shinki","Araya","Yodo"],
-  "Boruto-Kiri":["Kagura Karatachi","Chojuro (Mizukage)"],
-  "Boruto-Kumo":["Darui (Raikage)","Omoi"],
-  "Boruto-Iwa":["Kurotsuchi (Tsuchikage)"],
-  "Boruto-Oto":["Mitsuki (Oto origine)"],
-  "Boruto-Taki":["Personnage de Taki"],
-  "Ère des Clans-Konoha":["Hashirama Senju","Tobirama Senju","Madara Uchiha (jeune)"],
-  "Ère des Clans-Suna":["Chef du clan du Sable"],
-  "Ère des Clans-Kiri":["Premier Mizukage"],
-  "Ère des Clans-Kumo":["Premier Raikage"],
-  "Ère des Clans-Iwa":["Premier Tsuchikage"],
-  "Ère des Clans-Oto":["Guerrier errant"],
-  "Ère des Clans-Taki":["Hashirama Senju (fondateur)"],
-};
-
-const ANTAGONISTS={
-  "Classique":["Orochimaru","Zabuza Momochi","Kabuto Yakushi","Gato","Mizuki","Haku","Gaara (antagoniste)","Les frères Démon"],
-  "Shippuden":["Pain / Nagato","Itachi Uchiha","Kisame Hoshigaki","Deidara","Sasori","Hidan","Kakuzu","Konan","Zetsu","Obito Uchiha","Madara Uchiha","Kabuto Yakushi","Sasuke Uchiha","Kaguya Otsutsuki"],
-  "The Last":["Toneri Otsutsuki","Hanabi (contrôlée)"],
-  "Boruto":["Momoshiki Otsutsuki","Kinshiki Otsutsuki","Jigen / Isshiki","Code","Ada","Daemon","Delta","Victor","Deepa"],
-  "Ère des Clans":["Madara Uchiha","Kinkaku & Ginkaku","Chefs des clans rivaux","Démon des Dix Queues"],
-};
-
-const PALETTES=[
-  ["#E8521A","#B83D0E","#F97316","#CC1A1A","#FF6B2B","#8B2500"],
-  ["#1D4ED8","#1E3A8A","#3B82F6","#1D6FAA","#2563EB","#0C4A6E"],
-  ["#059669","#064E3B","#10B981","#047857","#34D399","#022C22"],
-  ["#7C3AED","#4C1D95","#8B5CF6","#6D28D9","#A78BFA","#2E1065"],
-  ["#D97706","#78350F","#F59E0B","#B45309","#FCD34D","#451A03"],
-];
-
-// ── STEP DEFINITIONS ──────────────────────────────────────────
-function getStarters(){
-  const p=S.results.periode,v=S.results.village;
-  if(!p||!v)return["?","?","?"];
-  return STARTERS[p+"-"+v]||["Ninja inconnu","Ninja errant","Kunoichi","Ronin","Héritier"];
-}
-function getAntags(){
-  const p=S.results.periode;
-  if(!p)return["?","?","?"];
-  return(ANTAGONISTS[p]||["Ennemi inconnu"]).slice(0,8);
-}
-
-const STEPS=[
-  {id:"periode", label:"Période",     getItems:()=>DATA.periodes.map(p=>p.short), pal:0},
-  {id:"village", label:"Village",     getItems:()=>DATA.villages.map(v=>v.short), pal:1},
-  {id:"perso",   label:"Personnage",  getItems:getStarters,                        pal:2},
-  {id:"antag",   label:"Antagoniste", getItems:getAntags,                          pal:3},
-  {id:"outcome", label:"Issue",       getItems:()=>DATA.outcomes.map(o=>o.short),  pal:4},
-];
-
-// ── STATE ─────────────────────────────────────────────────────
-const S={
-  step:0, results:{}, spinning:false,
-  rots:[0,0,0,0,0], items:[[],[],[],[],[]],
-  rankIdx:0, wins:0, badges:[],
-};
-const LAYERS=[];
-const SZ=280; // canvas logical px
-
-// ── BUILD LAYERS ──────────────────────────────────────────────
-function buildLayers(){
-  const wrap=document.getElementById("stackWrap");
-  LAYERS.forEach(l=>l.remove()); LAYERS.length=0;
-  STEPS.forEach((step,i)=>{
-    const layer=document.createElement("div"); layer.className="wheel-layer"; layer.id="lay-"+i;
-    const lbl=document.createElement("div"); lbl.className="layer-lbl"; lbl.textContent=step.label;
-    const cv=document.createElement("canvas"); cv.id="cv-"+i; cv.width=SZ; cv.height=SZ;
-    cv.style.cssText="width:100%;height:100%;border-radius:50%;display:block;";
-    const dot=document.createElement("div"); dot.className="wheel-dot";
-    layer.appendChild(lbl); layer.appendChild(cv); layer.appendChild(dot);
-    wrap.appendChild(layer); LAYERS.push(layer);
-  });
-}
-
-function revealLayer(i){if(LAYERS[i])LAYERS[i].classList.add("vis");}
-
-// ── DRAW ──────────────────────────────────────────────────────
-function drawWheel(i,rot){
-  const cv=document.getElementById("cv-"+i); if(!cv)return;
-  const ctx=cv.getContext("2d");
-  const its=S.items[i]; const n=its.length; if(!n)return;
-  const cx=SZ/2,cy=SZ/2,r=SZ/2-3;
-  const arc=(2*Math.PI)/n;
-  const pal=PALETTES[STEPS[i].pal];
-  ctx.clearRect(0,0,SZ,SZ);
-  for(let j=0;j<n;j++){
-    const sa=rot+j*arc,ea=sa+arc;
-    ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,sa,ea);ctx.closePath();
-    ctx.fillStyle=pal[j%pal.length];ctx.fill();
-    ctx.strokeStyle="rgba(0,0,0,.38)";ctx.lineWidth=1.5;ctx.stroke();
-    ctx.save();ctx.translate(cx,cy);ctx.rotate(sa+arc/2);
-    ctx.textAlign="right";ctx.fillStyle="#fff";
-    ctx.shadowColor="rgba(0,0,0,.8)";ctx.shadowBlur=4;
-    const fs=n<=4?14:n<=7?12:10;
-    ctx.font=`700 ${fs}px Rajdhani,sans-serif`;
-    const maxW=r-28; let lbl=its[j];
-    while(ctx.measureText(lbl).width>maxW&&lbl.length>3)lbl=lbl.slice(0,-1);
-    if(lbl!==its[j])lbl+="…";
-    ctx.fillText(lbl,r-13,fs/3);
-    ctx.restore();
-  }
-  ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);
-  ctx.strokeStyle="rgba(232,82,26,.5)";ctx.lineWidth=3;ctx.stroke();
-}
-
-function initItems(){STEPS.forEach((s,i)=>{S.items[i]=s.getItems();drawWheel(i,S.rots[i]);});}
-
-// ── SPIN ──────────────────────────────────────────────────────
-function spinCurrent(){
-  if(S.spinning)return;
-  const idx=S.step; if(idx>=STEPS.length)return;
-  revealLayer(idx);
-  document.getElementById("stackPtr").classList.add("show");
-  S.spinning=true;
-  const btn=document.getElementById("spinBtn");
-  btn.disabled=true; btn.classList.add("going"); btn.textContent="En rotation...";
-
-  S.items[idx]=STEPS[idx].getItems(); drawWheel(idx,S.rots[idx]);
-  const its=S.items[idx],n=its.length;
-  const ti=Math.floor(Math.random()*n);
-  const arc=(2*Math.PI)/n;
-  const base=-Math.PI/2-arc/2-ti*arc;
-  const fin=base+(6+Math.floor(Math.random()*5))*2*Math.PI;
-  const dur=3200+Math.random()*1400;
-  const t0=performance.now(),sr=S.rots[idx];
-  function ease(t){return 1-Math.pow(1-t,4);}
-  function go(now){
-    const t=Math.min((now-t0)/dur,1);
-    const cur=sr+(fin-sr)*ease(t);
-    S.rots[idx]=cur; drawWheel(idx,cur);
-    if(t<1){requestAnimationFrame(go);return;}
-    S.rots[idx]=fin; drawWheel(idx,fin);
-    LAYERS[idx].classList.add("done-l");
-    const res=its[ti]; S.results[STEPS[idx].id]=res;
-    // update result box
-    document.getElementById("srLbl").textContent=STEPS[idx].label;
-    document.getElementById("srVal").textContent=res;
-    document.getElementById("stepRes").classList.add("show");
-    S.spinning=false; btn.classList.remove("going");
-    if(idx<STEPS.length-1){
-      S.step++;
-      btn.disabled=false;
-      btn.textContent="⚡ Tourner — "+STEPS[S.step].label;
-    } else {
-      btn.textContent="✓ Destin révélé !"; btn.disabled=true;
-      document.getElementById("allBtn").style.display="none";
-      setTimeout(showDestiny,600);
+  // Petit helper global pour la confirmation de restart depuis le jeu
+  function confirmRestart() {
+    if (confirm("Recommencer une nouvelle partie ? Ta progression sera perdue.")) {
+      Engine.fullReset();
+      window._selectedPeriodId = null;
+      buildPeriodScreen();
+      showScreen("screenPeriod");
     }
   }
-  requestAnimationFrame(go);
-}
-
-function spinAll(){
-  if(S.spinning)return;
-  resetRound(true);
-  document.getElementById("allBtn").disabled=true;
-  function next(){
-    if(S.step>=STEPS.length)return;
-    spinCurrent();
-    const chk=setInterval(()=>{if(!S.spinning){clearInterval(chk);setTimeout(next,280);}},80);
-  }
-  next();
-}
-
-// ── DESTINY ───────────────────────────────────────────────────
-function showDestiny(){
-  const panel=document.getElementById("destinyPanel");
-  const grid=document.getElementById("dGrid");
-  const story=document.getElementById("dStory");
-  const {periode,village,perso,antag,outcome}=S.results;
-  const pd=DATA.periodes.find(p=>p.short===periode)||{};
-  const vd=DATA.villages.find(v=>v.short===village)||{};
-  const od=DATA.outcomes.find(o=>o.short===outcome)||DATA.outcomes[0];
-
-  // Grid — safe DOM (Règle 1)
-  grid.textContent="";
-  [
-    {label:"Période",    emoji:pd.emoji||"📜",value:periode, sub:pd.desc||""},
-    {label:"Village",    emoji:vd.emoji||"🏘️",value:village, sub:"Village du "+(vd.symbol||"Destin")},
-    {label:"Personnage", emoji:"⚡",           value:perso,   sub:"Ton héros ninja"},
-    {label:"Antagoniste",emoji:"☠️",           value:antag,   sub:"Ton ennemi"},
-    {label:"Issue",      emoji:od.emoji,       value:outcome, sub:od.xp+" pt(s) de progression"},
-  ].forEach(it=>{
-    const d=document.createElement("div");d.className="d-item";
-    const l=document.createElement("div");l.className="d-lbl";l.textContent=it.label;
-    const v=document.createElement("div");v.className="d-val";v.textContent=it.emoji+" "+it.value;
-    const s=document.createElement("div");s.className="d-sub";s.textContent=it.sub;
-    d.appendChild(l);d.appendChild(v);d.appendChild(s);grid.appendChild(d);
-  });
-
-  // Story — safe DOM (Règle 1)
-  function B(t){const s=document.createElement("strong");s.textContent=t;return s;}
-  const tpls=[
-    (p,v,c,a,o)=>{const f=document.createDocumentFragment();f.append("Durant la période ");f.append(B(p));f.append(", ");f.append(B(c));f.append(" de ");f.append(B(v));f.append(" affronte ");f.append(B(a));f.append(". Issue : ");f.append(B(o));f.append(".");return f;},
-    (p,v,c,a,o)=>{const f=document.createDocumentFragment();f.append("La chronique de ");f.append(B(v));f.append(" retient ce jour de l'ère ");f.append(B(p));f.append(" : ");f.append(B(c));f.append(" a tenu tête à ");f.append(B(a));f.append(". Le village se souvient — ");f.append(B(o));f.append(".");return f;},
-    (p,v,c,a,o)=>{const f=document.createDocumentFragment();f.append("Pendant ");f.append(B(p));f.append(", ");f.append(B(a));f.append(" croyait la victoire assurée. Mais ");f.append(B(c));f.append(" de ");f.append(B(v));f.append(" en a décidé autrement : ");f.append(B(o));f.append(".");return f;},
-    (p,v,c,a,o)=>{const f=document.createDocumentFragment();f.append("Mission de rang S. ");f.append(B(c));f.append(", envoyé par ");f.append(B(v));f.append(" durant l'ère ");f.append(B(p));f.append(", devait vaincre ");f.append(B(a));f.append(". Résultat : ");f.append(B(o));f.append(".");return f;},
-  ];
-  story.textContent="";
-  story.appendChild(tpls[Math.floor(Math.random()*tpls.length)](periode,village,perso,antag,outcome));
-
-  panel.classList.add("vis");
-  panel.scrollIntoView({behavior:"smooth",block:"start"});
-  setTimeout(()=>showBadge(antag,od),700);
-  if(od.xp>=1)setTimeout(()=>addProgression(antag,od),1400);
-}
-
-// ── BADGE ─────────────────────────────────────────────────────
-function hashStr(s){let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))>>>0;return h;}
-
-function badgeColors(name){
-  const h=hashStr(name);
-  const pp=[
-    ["#E8521A","#FF6B2B","#B83D0E"],
-    ["#7C3AED","#A78BFA","#4C1D95"],
-    ["#0891B2","#67E8F9","#164E63"],
-    ["#DC2626","#FCA5A5","#7F1D1D"],
-    ["#059669","#34D399","#064E3B"],
-    ["#D97706","#FCD34D","#78350F"],
-    ["#BE185D","#F9A8D4","#831843"],
-  ];
-  return pp[h%pp.length];
-}
-
-// SÉCURITÉ : makeBadgeSvg génère du SVG uniquement depuis des constantes
-// et des valeurs dérivées algorithmiquement du nom (hashStr).
-// Aucune entrée utilisateur n'est interpolée dans ce markup.
-function makeBadgeSvg(name,sz=110){
-  const h=hashStr(name);
-  const [c1,c2,c3]=badgeColors(name);
-  const cx=sz/2,cy=sz/2,r=sz/2-4;
-  const shp=h%4, eye=(h>>4)%3, mrk=(h>>8)%4;
-  let inn="";
-  // Background shape
-  if(shp===0){const pts=(R)=>Array.from({length:6},(_,i)=>{const a=Math.PI/180*(60*i-30);return`${(cx+R*Math.cos(a)).toFixed(1)},${(cy+R*Math.sin(a)).toFixed(1)}`;}).join(" ");inn+=`<polygon points="${pts(r)}" fill="${c1}" stroke="${c3}" stroke-width="2"/><polygon points="${pts(r-7)}" fill="none" stroke="${c2}" stroke-width="1" opacity=".4"/>`;}
-  else if(shp===1){inn+=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="${c1}" stroke="${c3}" stroke-width="2"/><circle cx="${cx}" cy="${cy}" r="${r-7}" fill="none" stroke="${c2}" stroke-width="1" opacity=".4"/>`;}
-  else if(shp===2){inn+=`<polygon points="${cx},${4} ${sz-4},${cy} ${cx},${sz-4} ${4},${cy}" fill="${c1}" stroke="${c3}" stroke-width="2"/>`;}
-  else{const o=sz*.15;inn+=`<polygon points="${o},${4} ${sz-o},${4} ${sz-4},${o} ${sz-4},${sz-o} ${sz-o},${sz-4} ${o},${sz-4} ${4},${sz-o} ${4},${o}" fill="${c1}" stroke="${c3}" stroke-width="2"/>`;}
-  // Face
-  const fr=r*.4;
-  inn+=`<circle cx="${cx}" cy="${cy-3}" r="${fr}" fill="${c2}" opacity=".9"/>`;
-  // Eyes
-  const ey=cy-3-fr*.18,ex1=cx-fr*.32,ex2=cx+fr*.32,er=fr*.13;
-  if(eye===0){inn+=`<circle cx="${ex1}" cy="${ey}" r="${er}" fill="${c3}"/><circle cx="${ex2}" cy="${ey}" r="${er}" fill="${c3}"/><circle cx="${ex1}" cy="${ey}" r="${er*.5}" fill="#fff"/><circle cx="${ex2}" cy="${ey}" r="${er*.5}" fill="#fff"/>`;}
-  else if(eye===1){const ew=er*1.4,eh=er*.5;inn+=`<rect x="${ex1-ew}" y="${ey-eh}" width="${ew*2}" height="${eh*2}" rx="${eh*.4}" fill="${c1}" transform="rotate(-10,${ex1},${ey})"/><rect x="${ex2-ew}" y="${ey-eh}" width="${ew*2}" height="${eh*2}" rx="${eh*.4}" fill="${c1}" transform="rotate(10,${ex2},${ey})"/>`;}
-  else{inn+=`<circle cx="${ex1}" cy="${ey}" r="${er}" fill="#9B59B6"/><circle cx="${ex2}" cy="${ey}" r="${er}" fill="#9B59B6"/><circle cx="${ex1}" cy="${ey}" r="${er*.35}" fill="#fff"/><circle cx="${ex2}" cy="${ey}" r="${er*.35}" fill="#fff"/>`;}
-  // Mouth
-  const my=cy-3+fr*.3;
-  inn+=`<line x1="${cx-fr*.26}" y1="${my}" x2="${cx+fr*.26}" y2="${my}" stroke="${c1}" stroke-width="${fr*.09}" stroke-linecap="round"/>`;
-  // Symbol
-  const mc=cx,mcy2=cy+fr*1.08;
-  if(mrk===0)inn+=`<polygon points="${mc},${mcy2-8} ${mc+7},${mcy2+4} ${mc-7},${mcy2+4}" fill="${c2}" opacity=".85"/>`;
-  else if(mrk===1)inn+=`<text x="${mc}" y="${mcy2+6}" text-anchor="middle" font-size="14" fill="${c2}" opacity=".9" font-family="serif">☯</text>`;
-  else if(mrk===2)inn+=`<text x="${mc}" y="${mcy2+6}" text-anchor="middle" font-size="14" fill="${c2}" opacity=".9">✦</text>`;
-  else inn+=`<line x1="${mc-7}" y1="${mcy2}" x2="${mc+7}" y2="${mcy2}" stroke="${c2}" stroke-width="2" opacity=".7"/><line x1="${mc}" y1="${mcy2-7}" x2="${mc}" y2="${mcy2+7}" stroke="${c2}" stroke-width="2" opacity=".7"/>`;
-  return`<svg width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}" xmlns="http://www.w3.org/2000/svg">${inn}</svg>`;
-}
-
-function showBadge(antag,od){
-  const wrap=document.getElementById("badgeRev");
-  wrap.style.display="block";
-  // SÉCURITÉ : innerHTML utilisé ici pour injecter du SVG généré par makeBadgeSvg()
-  // qui ne contient aucune valeur utilisateur — données uniquement depuis DATA + hash.
-  document.getElementById("badgeSvg").innerHTML=makeBadgeSvg(antag,110);
-  document.getElementById("badgeNm").textContent=antag;
-  document.getElementById("badgeSb").textContent=od.emoji+" "+od.short;
-}
-
-// ── PROGRESSION ───────────────────────────────────────────────
-function addProgression(antag,od){
-  S.badges.push({antag,outcome:od.short,cls:od.cls,emoji:od.emoji});
-  updateCollection();
-  S.wins++;
-  if(S.rankIdx>=RANKS.length-1){updateRankBar();return;}
-  const pct=Math.min(S.wins/WINS_PER_RANK*100,100);
-  animFill(pct);
-  updateRankBar();
-  if(S.wins>=WINS_PER_RANK){
-    S.wins=0; S.rankIdx=Math.min(S.rankIdx+1,RANKS.length-1);
-    setTimeout(showPromo,800);
-  }
-}
-
-function animFill(target){
-  const el=document.getElementById("rankFill");
-  const from=parseFloat(el.style.width)||0;
-  const dur=800,t0=performance.now();
-  function go(now){const t=Math.min((now-t0)/dur,1);el.style.width=(from+(target-from)*(1-Math.pow(1-t,3)))+"%";if(t<1)requestAnimationFrame(go);}
-  requestAnimationFrame(go);
-}
-
-// ── RANK BAR ──────────────────────────────────────────────────
-// SÉCURITÉ : makeRankEmblem produit du SVG depuis des constantes.
-// Aucune interpolation utilisateur. L'injection innerHTML est sûre ici.
-function makeRankEmblem(rank,sz){
-  const cx=sz/2,cy=sz/2,r=sz/2-3,c=rank.color;
-  const e={
-    "Genin": `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${c}22" stroke="${c}" stroke-width="2"/><text x="${cx}" y="${cy+sz*.1}" text-anchor="middle" font-size="${sz*.32}" fill="${c}" font-family="serif">忍</text>`,
-    "Chûnin":`<polygon points="${cx},3 ${sz-3},${cy+r*.5} ${cx+r*.8},${sz-3} ${cx-r*.8},${sz-3} 3,${cy+r*.5}" fill="${c}22" stroke="${c}" stroke-width="2"/><text x="${cx}" y="${cy+sz*.1}" text-anchor="middle" font-size="${sz*.3}" fill="${c}" font-family="serif">中</text>`,
-    "Jônin": `<polygon points="${cx},2 ${sz-2},${sz-2} 2,${sz-2}" fill="${c}22" stroke="${c}" stroke-width="2"/><text x="${cx}" y="${cy+sz*.14}" text-anchor="middle" font-size="${sz*.28}" fill="${c}" font-family="serif">上</text>`,
-    "Kage":  `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${c}33" stroke="${c}" stroke-width="3"/><circle cx="${cx}" cy="${cy}" r="${r-6}" fill="none" stroke="${c}" stroke-width="1" opacity=".4"/><text x="${cx}" y="${cy+sz*.1}" text-anchor="middle" font-size="${sz*.3}" fill="${c}" font-family="serif">影</text>`,
-  };
-  return e[rank.name]||e["Genin"];
-}
-
-function updateRankBar(){
-  const rank=RANKS[S.rankIdx];
-  document.getElementById("rankName").textContent=rank.name;
-  document.getElementById("rankName").style.color=rank.color;
-  document.getElementById("rankWC").textContent=S.wins;
-  document.getElementById("rankWM").textContent=WINS_PER_RANK;
-  document.getElementById("rankNxt").textContent=rank.next||"—";
-  document.getElementById("rankFill").style.background=`linear-gradient(90deg,${rank.color}88,${rank.color})`;
-  document.getElementById("rankEmblem").innerHTML=makeRankEmblem(rank,60);
-}
-
-// ── PROMOTION ─────────────────────────────────────────────────
-function showPromo(){
-  const rank=RANKS[S.rankIdx];
-  if(rank.name==="Kage"){showKage(rank);return;}
-  document.getElementById("pTtl").textContent=rank.name;
-  document.getElementById("pSub").textContent=rank.title+" !";
-  document.getElementById("pEmb").innerHTML=makeRankEmblem(rank,90);
-  document.getElementById("promoOv").classList.add("show");
-  animFill(0);
-}
-function closePromo(){document.getElementById("promoOv").classList.remove("show");updateRankBar();}
-
-function showKage(rank){
-  const v=S.results.village||"ton village";
-  document.getElementById("kageTtl").textContent="Tu es devenu Kage !";
-  document.getElementById("kageSub").textContent="Kage de "+v+" — le sommet est atteint.";
-  document.getElementById("kageEmb").innerHTML=makeRankEmblem(rank,110);
-  document.getElementById("kageOv").classList.add("show");
-}
-function closeKage(){document.getElementById("kageOv").classList.remove("show");updateRankBar();}
-
-// ── COLLECTION ────────────────────────────────────────────────
-function updateCollection(){
-  const sec=document.getElementById("collSec");
-  sec.style.display="block";
-  document.getElementById("collSub").textContent=S.badges.length+" ennemi"+(S.badges.length>1?"s":"")+" vaincu"+(S.badges.length>1?"s":"");
-  const grid=document.getElementById("collGrid");
-  grid.textContent="";
-  S.badges.forEach((b,i)=>{
-    const sl=document.createElement("div");sl.className="bslot";sl.style.animationDelay=(i*.05)+"s";
-    const sw=document.createElement("div");
-    // SÉCURITÉ : SVG depuis makeBadgeSvg() — constantes + hash uniquement, pas d'entrée utilisateur
-    sw.innerHTML=makeBadgeSvg(b.antag,88);
-    const nm=document.createElement("div");nm.className="bslot-nm";nm.textContent=b.antag;
-    const out=document.createElement("div");out.className="bslot-out "+b.cls;out.textContent=b.emoji+" "+b.outcome;
-    sl.appendChild(sw);sl.appendChild(nm);sl.appendChild(out);
-    grid.appendChild(sl);
-  });
-}
-
-// ── RESET ─────────────────────────────────────────────────────
-function resetRound(keepProgress){
-  S.step=0; S.results={}; S.spinning=false;
-  S.rots=[0,0,0,0,0]; S.items=[[],[],[],[],[]];
-  buildLayers(); initItems();
-  document.getElementById("stackPtr").classList.remove("show");
-  document.getElementById("stepRes").classList.remove("show");
-  document.getElementById("srLbl").textContent="";
-  document.getElementById("srVal").textContent="Lance la première roue !";
-  const btn=document.getElementById("spinBtn");
-  btn.disabled=false; btn.classList.remove("going"); btn.textContent="⚡ Tourner";
-  document.getElementById("destinyPanel").classList.remove("vis");
-  document.getElementById("badgeRev").style.display="none";
-  document.getElementById("allBtn").style.display="";
-  document.getElementById("allBtn").disabled=false;
-}
-
-// ── INIT ──────────────────────────────────────────────────────
-window.addEventListener("DOMContentLoaded",()=>{
-  buildLayers(); initItems(); updateRankBar(); revealLayer(0);
-});
+  // Styles dynamiques kage-close (pas dans CSS pour éviter duplication)
+  document.querySelector(".kage-close") && Object.assign(
+    document.querySelector(".kage-close").style,
+    { background: "linear-gradient(135deg,#D4AF37,#F0C94A)", color: "#0A0A0F", fontFamily: "'Cinzel Decorative',serif" }
+  );
 </script>
 </body>
 </html>
