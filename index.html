@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- SÉCURITÉ : CSP — autorise uniquement fonts.googleapis.com en ressource CSS externe.
+     Aucun script tiers, aucune image externe, aucun framing autorisé. -->
+<meta http-equiv="Content-Security-Policy"
+  content="default-src 'self';
+           script-src 'self' 'unsafe-inline';
+           style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+           font-src https://fonts.gstatic.com;
+           img-src 'self' data:;
+           frame-ancestors 'none';">
+<title>Naruto Destiny Wheel</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/illustrations.css">
+</head>
+<body>
+<div class="bg-pattern" aria-hidden="true"></div>
+
+<!-- ══════════════════════════════════════════════════════════
+     ÉCRAN 1 — SÉLECTION DE PÉRIODE
+     ══════════════════════════════════════════════════════════ -->
+<div id="screenPeriod" class="screen active">
+  <div class="wrap">
+
+    <header>
+      <svg class="h-emblem" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+        <circle cx="32" cy="32" r="30" stroke="#E8521A" stroke-width="1.5" opacity=".4"/>
+        <path d="M32 8C32 8 50 18 52 32C54 46 42 56 32 56C22 56 10 46 12 32C14 18 32 8 32 8Z" fill="#E8521A" opacity=".85"/>
+        <path d="M32 16C32 16 44 23 45 32C46 41 38 48 32 48C26 48 18 41 19 32C20 23 32 16 32 16Z" fill="#0A0A0F"/>
+        <path d="M32 12C28 24 20 28 20 38C20 44 25 50 32 52C32 52 32 32 32 12Z" fill="#E8521A" opacity=".5"/>
+        <circle cx="32" cy="32" r="4" fill="#E8521A"/>
+      </svg>
+      <h1>Naruto Destiny Wheel<span>Choisir une ère pour commencer</span></h1>
+      <div class="h-line" aria-hidden="true"></div>
+    </header>
+
+    <p class="period-intro">
+      Sélectionne l'ère dans laquelle se déroulera ton aventure ninja.
+      Ce choix est définitif pour toute la partie.
+    </p>
+
+    <!-- Cartes injectées par buildPeriodScreen() dans ui.js -->
+    <div class="period-cards" id="periodCards" role="radiogroup" aria-label="Choisir une période"></div>
+
+    <button class="period-confirm" id="periodConfirm" onclick="confirmPeriod()" aria-label="Confirmer la période choisie">
+      Commencer l'aventure →
+    </button>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     ÉCRAN 2 — JEU
+     ══════════════════════════════════════════════════════════ -->
+<div id="screenGame" class="screen">
+  <div class="wrap">
+
+    <header>
+      <svg class="h-emblem" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+        <circle cx="32" cy="32" r="30" stroke="#E8521A" stroke-width="1.5" opacity=".4"/>
+        <path d="M32 8C32 8 50 18 52 32C54 46 42 56 32 56C22 56 10 46 12 32C14 18 32 8 32 8Z" fill="#E8521A" opacity=".85"/>
+        <path d="M32 16C32 16 44 23 45 32C46 41 38 48 32 48C26 48 18 41 19 32C20 23 32 16 32 16Z" fill="#0A0A0F"/>
+        <path d="M32 12C28 24 20 28 20 38C20 44 25 50 32 52C32 52 32 32 32 12Z" fill="#E8521A" opacity=".5"/>
+        <circle cx="32" cy="32" r="4" fill="#E8521A"/>
+      </svg>
+      <h1>Naruto Destiny Wheel<span>Ton destin de ninja t'attend</span></h1>
+      <div class="h-line" aria-hidden="true"></div>
+    </header>
+
+    <!-- HUD : vies + rang -->
+    <div class="hud" role="region" aria-label="État du joueur">
+
+      <div class="hud-lives">
+        <div class="lives-label">Vies</div>
+        <div class="lives-hearts" id="livesHearts" aria-live="polite"></div>
+      </div>
+
+      <div class="hud-rank">
+        <div class="rank-emblem-wrap">
+          <svg id="rankEmblemHUD" width="52" height="52" viewBox="0 0 52 52" aria-hidden="true"></svg>
+        </div>
+        <div class="rank-text">
+          <div class="rank-name-lbl" id="rankNameHUD">Genin</div>
+          <div class="rank-track">
+            <div class="rank-fill" id="rankFillHUD" style="width:0%"></div>
+          </div>
+          <div class="rank-caption">
+            <strong id="rankWinsC">0</strong> /
+            <strong id="rankWinsM">5</strong> vers
+            <span id="rankNextN">Chûnin</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Inventaire -->
+    <div class="inventory" role="region" aria-label="Inventaire">
+      <div class="inv-label">Inventaire</div>
+      <div class="inv-items" id="invItems" aria-live="polite">
+        <span class="inv-empty">Inventaire vide — gagne des combats pour looter !</span>
+      </div>
+    </div>
+
+    <!-- Arena : roues empilées -->
+    <div class="arena">
+
+      <div class="arena-step-label" id="arenaStepLabel">
+        Tourne les roues pour révéler ton destin
+      </div>
+
+      <div class="stack-wrap" id="stackWrap" role="region" aria-label="Roues du destin">
+        <div class="stack-ptr" id="stackPtr" aria-hidden="true"></div>
+        <!-- Les couches de roues sont injectées par buildRound() dans ui.js -->
+      </div>
+
+      <div class="ctrl">
+        <div class="step-res" id="stepRes" aria-live="assertive">
+          <div>
+            <span class="sr-lbl" id="srLbl"></span>
+            <span class="sr-val" id="srVal">Lance la roue !</span>
+          </div>
+        </div>
+        <button class="btn-spin" id="spinBtn" onclick="spinCurrent()">⚡ Tourner</button>
+      </div>
+
+      <div class="all-wrap">
+        <button class="btn-all" id="allBtn" onclick="spinAll()">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+            <polyline points="21 3 21 9 15 9"/>
+          </svg>
+          Révéler mon destin
+        </button>
+      </div>
+
+    </div>
+
+    <!-- Panneau résultat du round -->
+    <div class="destiny" id="destinyPanel" role="region" aria-label="Résultat du round" aria-live="polite">
+      <div class="d-title">✦ Ton aventure ninja ✦</div>
+
+      <div class="d-grid" id="dGrid"></div>
+      <div class="d-story" id="dStory"></div>
+
+      <!-- Loot obtenu -->
+      <div class="loot-panel" id="lootPanel" style="display:none">
+        <div class="loot-panel-title">⚡ Butin de guerre ⚡</div>
+        <span class="loot-item-big" id="lootItemIcon"></span>
+        <span class="loot-item-name" id="lootItemName"></span>
+        <div class="loot-item-type" id="lootItemType"></div>
+        <div class="d-sub" style="margin-top:6px" id="lootItemDesc"></div>
+      </div>
+
+      <!-- Badge antagoniste -->
+      <div class="badge-rev-section" id="badgeSection" style="display:none">
+        <div class="badge-rev-title">⚔ Ennemi vaincu — Badge obtenu ⚔</div>
+        <div class="badge-wrap badge-appear" id="badgeSvgWrap"></div>
+        <div class="badge-rev-name" id="badgeNm"></div>
+        <div class="badge-rev-sub" id="badgeSb"></div>
+      </div>
+
+      <button class="btn-next-round" onclick="nextRound()">⚡ Round suivant</button>
+      <button class="btn-ghost" style="margin-top:10px" onclick="confirmRestart()">↺ Recommencer une partie</button>
+    </div>
+
+    <!-- Collection -->
+    <div class="coll" id="collSection" role="region" aria-label="Collection de badges">
+      <div class="coll-title">Tableau des victoires</div>
+      <div class="coll-sub" id="collSub"></div>
+      <div class="badges-grid" id="collGrid"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     OVERLAYS
+     ══════════════════════════════════════════════════════════ -->
+
+<!-- Promotion -->
+<div class="overlay overlay-bg-dark" id="promoOv" role="dialog" aria-modal="true" aria-labelledby="promoTitle">
+  <div class="ov-box promo-border">
+    <div class="ov-lbl">Promotion de rang</div>
+    <div class="ov-title" id="promoTitle"></div>
+    <div class="ov-sub"   id="promoSub"></div>
+    <svg id="promoEmb" class="ov-emblem" width="88" height="88" viewBox="0 0 88 88" aria-hidden="true"></svg>
+    <button class="btn-next-round" onclick="closePromo()">Continuer l'aventure</button>
+  </div>
+</div>
+
+<!-- Kage / Victoire -->
+<div class="overlay overlay-bg-kage" id="kageOv" role="dialog" aria-modal="true" aria-labelledby="kageTtl">
+  <div class="ov-box wide ov-border-gold">
+    <span class="kage-float" aria-hidden="true">🏯</span>
+    <div class="ov-title gold" id="kageTtl">Tu es Kage !</div>
+    <div class="ov-sub"       id="kageSub"></div>
+    <svg id="kageEmb" class="ov-emblem" width="108" height="108" viewBox="0 0 108 108" aria-hidden="true"></svg>
+    <button class="kage-close btn-next-round" onclick="closeKage()">Une nouvelle ère s'ouvre</button>
+  </div>
+</div>
+
+<!-- Game Over -->
+<div class="overlay overlay-bg-over" id="goOv" role="dialog" aria-modal="true" aria-labelledby="goTitle">
+  <div class="ov-box ov-border-red">
+    <span class="gameover-skull" aria-hidden="true">💀</span>
+    <div class="ov-title red" id="goTitle">Tu as succombé</div>
+    <div class="ov-sub">
+      Tombé à <strong id="goVillage"></strong> face à <strong id="goAntag"></strong>.<br>
+      <span id="goBadges"></span> badges collectés.
+    </div>
+    <button class="btn-next-round" style="margin-top:24px" onclick="closeGameOver()">Recommencer</button>
+  </div>
+</div>
+
+<!-- ── SCRIPTS — ordre d'exécution important ── -->
+<script src="js/data.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/wheel.js"></script>
+<script src="js/ui.js"></script>
+<script>
+  // Petit helper global pour la confirmation de restart depuis le jeu
+  function confirmRestart() {
+    if (confirm("Recommencer une nouvelle partie ? Ta progression sera perdue.")) {
+      Engine.fullReset();
+      window._selectedPeriodId = null;
+      buildPeriodScreen();
+      showScreen("screenPeriod");
+    }
+  }
+  // Styles dynamiques kage-close (pas dans CSS pour éviter duplication)
+  document.querySelector(".kage-close") && Object.assign(
+    document.querySelector(".kage-close").style,
+    { background: "linear-gradient(135deg,#D4AF37,#F0C94A)", color: "#0A0A0F", fontFamily: "'Cinzel Decorative',serif" }
+  );
+</script>
+</body>
+</html>
