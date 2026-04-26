@@ -246,33 +246,26 @@ h1 span {
   position: absolute; inset: 0;
   display: flex; align-items: center; justify-content: center;
   border-radius: 50%;
-  opacity: 0; transform: translateY(70px) scale(.84);
-  transition: opacity .5s cubic-bezier(.4,0,.2,1),
-              transform .55s cubic-bezier(.34,1.3,.64,1),
-              box-shadow .4s;
+  /* État par défaut : hors champ en bas, invisible */
+  opacity: 0;
+  transform: translateY(80px) scale(.88);
+  transition: opacity .45s cubic-bezier(.4,0,.2,1),
+              transform .5s cubic-bezier(.34,1.2,.64,1);
   pointer-events: none;
 }
-.wheel-layer.vis  { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
-.wheel-layer.done { box-shadow: 0 0 0 3px rgba(212,175,55,.55); }
-
-.stack-ptr {
-  position: absolute; top: -16px; left: 50%; transform: translateX(-50%);
-  width: 0; height: 0;
-  border-left: 10px solid transparent;
-  border-right: 10px solid transparent;
-  border-top: 22px solid var(--orange);
-  filter: drop-shadow(0 2px 6px rgba(232,82,26,.7));
-  z-index: 50; opacity: 0; transition: opacity .3s;
+/* Roue active — entre par le bas */
+.wheel-layer.vis  {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
 }
-.stack-ptr.show { opacity: 1; }
-
-.layer-lbl {
-  position: absolute; top: -16px; left: 50%; transform: translateX(-50%);
-  background: var(--dark3); border: 1px solid var(--border); border-radius: 20px;
-  padding: 3px 12px;
-  font-family: 'Cinzel Decorative', serif; font-size: 9px;
-  letter-spacing: .2em; color: var(--orange);
-  white-space: nowrap; z-index: 20;
+/* Roue terminée — sort par le haut, invisible */
+.wheel-layer.done {
+  opacity: 0;
+  transform: translateY(-80px) scale(.88);
+  pointer-events: none;
+  transition: opacity .35s cubic-bezier(.4,0,.2,1),
+              transform .4s cubic-bezier(.4,0,.2,1);
 }
 
 .wheel-dot {
