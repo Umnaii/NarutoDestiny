@@ -9,33 +9,31 @@ const Engine = (() => {
 
   // ── État global ──────────────────────────────────────────────
   const G = {
-    // Village choisi au début de partie (fixé)
-    village: null,
-    // Période tirée aléatoirement à chaque round selon le rang
-    periode: null,
+    village:  null,   // fixé au départ
+    periode:  null,   // tiré aléatoirement chaque round
 
-    // Round courant
     round: {
       step:    0,
-      results: {},     // { village (préfixé), perso, antag, outcome, loot }
+      results: {},
       spinning: false,
     },
 
-    // Vies
     lives:    3,
     livesMax: 3,
-
-    // Rang
     rankIdx:  0,
-    wins:     0,
+    wins:     0,      // combats gagnés dans le rang courant (pour déclencher l'examen)
 
-    // Inventaire
+    // Persistants entre les rounds
+    perso:    null,   // nom du perso (fixé après 1er spin jusqu'au game over)
+    persoStyle: null, // style de combat du perso
+
     inventory: [],
+    badges:    [],
 
-    // Collection de badges
-    badges: [],
+    // Flux : "combat" → "loot" → "examen" → (réussite→rang suivant | échec→"combat")
+    phase: "combat",  // "combat" | "loot" | "examen"
+    examReady: false, // true quand assez de victoires pour déclencher l'examen
 
-    // Statut global
     status: "village_select",
   };
 
@@ -148,71 +146,112 @@ const Engine = (() => {
     G.round.results[key] = value;
   }
 
-  // ── Appliquer le résultat de l'Issue ─────────────────────────
-  // Retourne { usedChance, usedHeal, lifeChange, newLives, rankUp, gameOver, victory }
+  // ── Appliquer le résultat du combat (Issue) ──────────────────
+  // Retourne { usedChance, usedHeal, lifeChange, examReady, gameOver }
   function applyOutcome(outcomeIdx) {
     const outcome = OUTCOMES[outcomeIdx];
-    let usedChance = false;
-    let usedHeal   = false;
-    let lifeChange = 0;
-    let rankUp     = false;
+    let usedChance = false, usedHeal = false, lifeChange = 0;
 
     if (outcome.life < 0) {
-      // Défaite : vérifier l'inventaire chance
       const chanceIdx = G.inventory.findIndex(it => it.effect === "chance");
       if (chanceIdx !== -1) {
-        // Utilisation automatique du talisman
         G.inventory.splice(chanceIdx, 1);
         usedChance = true;
-        // On ne perd pas de vie, on ne gagne pas de XP
       } else {
-        // Vraie défaite : -1 vie
         G.lives = Math.max(0, G.lives - 1);
         lifeChange = -1;
-
-        // Soin automatique si on a un item heal et qu'on perd une vie
         const healIdx = G.inventory.findIndex(it => it.effect === "heal");
-        if (healIdx !== -1 && G.lives < G.livesMax) {
+        if (healIdx !== -1) {
           G.inventory.splice(healIdx, 1);
           G.lives = Math.min(G.livesMax, G.lives + 1);
           usedHeal = true;
-          lifeChange = 0; // compensé
+          lifeChange = 0;
         }
       }
     }
 
-    // XP seulement si pas de défaite nette
+    const gameOver = G.lives <= 0;
+    if (gameOver) { G.status = "gameover"; return { usedChance, usedHeal, lifeChange, examReady: false, gameOver }; }
+
+    // Badge si victoire ou nul
     if (outcome.xp > 0) {
-      G.wins += outcome.xp;
-      if (G.wins >= WINS_PER_RANK && G.rankIdx < RANKS.length - 1) {
-        G.wins = 0;
-        G.rankIdx++;
-        rankUp = true;
-      }
+      G.badges.push({
+        antag:        G.round.results.antag,
+        outcomeShort: outcome.short,
+        outcomeCls:   outcome.cls,
+        emoji:        outcome.emoji,
+      });
+      // Compteur de victoires pour déclencher l'examen
+      G.wins++;
     }
 
-    // Vérifier fin de partie
-    const gameOver  = G.lives <= 0;
-    const victory   = G.rankIdx >= RANKS.length - 1 && !rankUp
-                   || (rankUp && G.rankIdx >= RANKS.length - 1);
+    // L'examen se déclenche après 1 victoire (win > 0 suffit)
+    // On ne passe à l'examen qu'après le loot
+    G.examReady = G.wins > 0;
+    G.phase = "loot";
 
-    if (gameOver) G.status = "gameover";
-    if (victory && !gameOver) G.status = "victory";
+    return { usedChance, usedHeal, lifeChange, examReady: G.examReady, gameOver: false };
+  }
 
-    // Stocker le badge si pas défaite nette
-    if (!gameOver) {
-      const won = outcome.life >= 0 || usedChance;
-      if (won || outcome.xp > 0 || usedChance) {
-        G.badges.push({
-          antag: G.round.results.antag,
-          outcomeShort: outcome.short,
-          outcomeCls:   outcome.cls,
-          emoji:        outcome.emoji,
-        });
-      }
+  // ── Calcul des poids de l'examen ─────────────────────────────
+  // Poids de base selon le rang (plus dur à chaque rang)
+  //   Genin→Chûnin : Réussite=60, Échec=40
+  //   Chûnin→Jônin : Réussite=45, Échec=55
+  //   Jônin→Kage   : Réussite=35, Échec=65
+  // Bonus inventaire : chance +20, tech (n'importe) +6, arme +4, heal +0
+  function computeExamenWeights() {
+    const basePoids = [
+      [60, 40],  // Genin → Chûnin
+      [45, 55],  // Chûnin → Jônin
+      [35, 65],  // Jônin → Kage
+    ];
+    const [bR, bE] = basePoids[Math.min(G.rankIdx, 2)] || [50, 50];
+    let wReussite = bR, wEchec = bE;
+
+    G.inventory.forEach(item => {
+      if (item.effect === "chance")  wReussite += 20;
+      else if (item.type === "ninjutsu" || item.type === "taijutsu" || item.type === "genjutsu") wReussite += 6;
+      else if (item.type === "weapon")  wReussite += 4;
+    });
+
+    return [
+      { short:"Réussite", emoji:"✅", wheelColor:"#059669", weight: wReussite },
+      { short:"Échec",    emoji:"❌", wheelColor:"#7F1D1D", weight: wEchec   },
+    ];
+  }
+
+  // ── Appliquer le résultat de l'examen ────────────────────────
+  // Retourne { passed, rankUp, victory }
+  function applyExamen(resultIdx) {
+    const passed = resultIdx === 0; // index 0 = Réussite
+
+    if (!passed) {
+      // Échec : pas de perte de vie, on repart en combat
+      G.phase     = "combat";
+      G.examReady = false;
+      // On ne réinitialise PAS G.wins — l'examen reste accessible après le prochain combat
+      return { passed: false, rankUp: false, victory: false };
     }
 
-    return { usedChance, usedHeal, lifeChange, rankUp, gameOver, victory };
+    // Réussite : promotion
+    G.wins    = 0;
+    G.rankIdx = Math.min(G.rankIdx + 1, RANKS.length - 1);
+    G.phase   = "combat";
+    G.examReady = false;
+
+    const victory = G.rankIdx >= RANKS.length - 1;
+    if (victory) G.status = "victory";
+
+    return { passed: true, rankUp: true, victory };
+  }
+
+  // ── Setter perso persistant ───────────────────────────────────
+  function setPerso(name, style) {
+    G.perso      = name;
+    G.persoStyle = style;
+    // On l'injecte aussi dans les résultats du round courant
+    G.round.results.perso      = name;
+    G.round.results.persoStyle = style;
   }
 
   // ── Ajouter un item loot à l'inventaire ──────────────────────
@@ -270,24 +309,39 @@ const Engine = (() => {
   }
 
   // ── Nouveau round ────────────────────────────────────────────
+  // Conserve perso, persoStyle, inventory, vies entre les rounds.
   function newRound() {
-    // Tire la période aléatoirement selon le rang
     G.periode = _drawPeriode();
-    G.round   = { step: 0, results: { village: G.village ? G.village.short : null }, spinning: false };
+    // On conserve le village dans les résultats ; le perso est persistant
+    G.round = {
+      step: 0,
+      results: {
+        village:    G.village ? G.village.short : null,
+        perso:      G.perso,
+        persoStyle: G.persoStyle,
+      },
+      spinning: false,
+    };
+    // L'examen ne se déclenche qu'après 1 victoire combat dans le rang courant
+    // (géré par applyOutcome → examReady)
   }
 
   // ── Réinitialisation complète ────────────────────────────────
   function fullReset() {
-    G.village   = null;
-    G.periode   = null;
-    G.round     = { step: 0, results: {}, spinning: false };
-    G.lives     = 3;
-    G.livesMax  = 3;
-    G.rankIdx   = 0;
-    G.wins      = 0;
-    G.inventory = [];
-    G.badges    = [];
-    G.status    = "village_select";
+    G.village    = null;
+    G.periode    = null;
+    G.round      = { step: 0, results: {}, spinning: false };
+    G.lives      = 3;
+    G.livesMax   = 3;
+    G.rankIdx    = 0;
+    G.wins       = 0;
+    G.perso      = null;
+    G.persoStyle = null;
+    G.inventory  = [];
+    G.badges     = [];
+    G.phase      = "combat";
+    G.examReady  = false;
+    G.status     = "village_select";
   }
 
   // ── Rang actuel ──────────────────────────────────────────────
@@ -297,7 +351,8 @@ const Engine = (() => {
 
   return {
     getState, setVillage, getStarters, getPersoStyle, getAntags, getAntagData,
-    computeIssueWeights, setResult, applyOutcome, addLoot, buildLootPool,
+    computeIssueWeights, computeExamenWeights,
+    setResult, setPerso, applyOutcome, applyExamen, addLoot, buildLootPool,
     newRound, fullReset, currentRank, nextRank, rankPct,
   };
 })();

@@ -164,24 +164,40 @@ function updateInventoryBar() {
 }
 
 // ── ROUND BUILDER ─────────────────────────────────────────────
-// Le village est fixé au départ — on commence directement au Personnage
-const STEPS = [
-  { id:"perso",  label:"Personnage",  canvasId:"cvPerso", pal:0 },
-  { id:"antag",  label:"Antagoniste", canvasId:"cvAntag", pal:1 },
-  { id:"issue",  label:"Issue",       canvasId:"cvIssue", pal:-1 },
-  { id:"loot",   label:"Loot",        canvasId:"cvLoot",  pal:-2 },
-];
+// Les STEPS varient selon la phase du jeu :
+//   - 1er round / après game over : perso + antag + issue + loot [+ examen si examReady]
+//   - Rounds suivants (perso fixé) : antag + issue + loot [+ examen si examReady]
+//   - Après échec examen : antag + issue + loot + examen (directement)
 
+function buildSteps() {
+  const G = Engine.getState();
+  const hasPerso = !!G.perso;
+  const steps = [];
+
+  if (!hasPerso) {
+    steps.push({ id:"perso",  label:"Personnage",  canvasId:"cvPerso", pal:0 });
+  }
+  steps.push({ id:"antag",  label:"Antagoniste", canvasId:"cvAntag", pal:1 });
+  steps.push({ id:"issue",  label:"Combat",      canvasId:"cvIssue", pal:-1 });
+  steps.push({ id:"loot",   label:"Butin",       canvasId:"cvLoot",  pal:-2 });
+  // La roue examen est toujours ajoutée — elle sera sautée si !examReady après loot
+  steps.push({ id:"examen", label:"Examen",      canvasId:"cvExamen",pal:-3 });
+
+  return steps;
+}
+
+let _STEPS    = [];
 const _layerEls = [];
 let   _lootPool = [];
 
 function buildRound() {
   const wrap = $("stackWrap");
-  // Vider les anciennes couches
   _layerEls.forEach(l => l.remove());
   _layerEls.length = 0;
 
-  STEPS.forEach((step, i) => {
+  _STEPS = buildSteps();
+
+  _STEPS.forEach((step, i) => {
     const layer = document.createElement("div");
     layer.className = "wheel-layer";
     layer.id = "layer-" + i;
@@ -192,13 +208,11 @@ function buildRound() {
     cv.style.cssText = "width:100%;height:100%;border-radius:50%;display:block;";
 
     const dot = document.createElement("div"); dot.className = "wheel-dot";
-
     layer.appendChild(cv); layer.appendChild(dot);
     wrap.appendChild(layer);
     _layerEls.push(layer);
   });
 
-  // Dessiner seulement la première roue, révéler uniquement elle
   _initWheelDraw(0);
   revealLayer(0);
 
@@ -206,7 +220,7 @@ function buildRound() {
   $("srLbl").textContent = "";
   $("srVal").textContent = "Lance la roue !";
   $("srVal").className   = "sr-val";
-  $("arenaStepLabel").textContent = STEPS[0].label;
+  $("arenaStepLabel").textContent = _STEPS[0].label;
 
   const btn = $("spinBtn");
   btn.disabled = false; btn.classList.remove("going");
@@ -216,24 +230,38 @@ function buildRound() {
 }
 
 function _initWheelDraw(stepIdx) {
-  const step = STEPS[stepIdx];
-  const G = Engine.getState();
+  const step = _STEPS[stepIdx];
+  if (!step) return;
   if (step.pal === -1) {
     WheelEngine.drawIssue(step.canvasId, 0);
   } else if (step.pal === -2) {
     _lootPool = Engine.buildLootPool(8);
     WheelEngine.drawLoot(step.canvasId, _lootPool, 0);
+  } else if (step.pal === -3) {
+    // Roue examen — dessinée avec les poids calculés
+    const weights = Engine.computeExamenWeights();
+    WheelEngine.drawIssue(step.canvasId, 0); // même moteur que Issue (2 couleurs)
+    _drawExamen(step.canvasId, weights, 0);
   } else {
     const items = _getItems(stepIdx);
     WheelEngine.drawGeneric(step.canvasId, items, step.pal, 0);
   }
 }
 
+// Dessin roue examen (2 segments)
+function _drawExamen(canvasId, weights, rotation) {
+  const items  = weights.map(w => w.short);
+  const colors = weights.map(w => w.wheelColor);
+  WheelEngine.draw(canvasId, items, colors, rotation);
+}
+
 function _getItems(stepIdx) {
-  switch (stepIdx) {
-    case 0: return Engine.getStarters();          // Personnage — filtrés canBeGenin
-    case 1: return Engine.getAntags().map(a => a.name); // Antagoniste — selon rang
-    default: return [];
+  const step = _STEPS[stepIdx];
+  if (!step) return [];
+  switch (step.id) {
+    case "perso":  return Engine.getStarters();
+    case "antag":  return Engine.getAntags().map(a => a.name);
+    default:       return [];
   }
 }
 
@@ -241,29 +269,24 @@ function revealLayer(i) {
   if (_layerEls[i]) _layerEls[i].classList.add("vis");
 }
 
-// Fait sortir la roue courante vers le haut, puis fait entrer la suivante
 function transitionToNext(fromIdx, toIdx, onReady) {
   const from = _layerEls[fromIdx];
   const to   = _layerEls[toIdx];
   if (!from || !to) { if (onReady) onReady(); return; }
 
-  // Sortie de la roue précédente
   from.classList.add("done");
   from.classList.remove("vis");
-
-  // On prépare la roue suivante juste avant de la faire entrer
   _initWheelDraw(toIdx);
 
-  // Entrée de la nouvelle roue après un court délai (laisse la sortie se faire)
   setTimeout(() => {
     to.classList.add("vis");
-    $("arenaStepLabel").textContent = STEPS[toIdx].label;
+    $("arenaStepLabel").textContent = _STEPS[toIdx].label;
     if (onReady) onReady();
   }, 320);
 }
 
 // ── SPIN ──────────────────────────────────────────────────────
-let _stepIdx = 0;
+let _stepIdx  = 0;
 let _stepRots = [0, 0, 0, 0, 0];
 
 function spinCurrent() {
@@ -271,14 +294,31 @@ function spinCurrent() {
   if (G.round.spinning) return;
   G.round.spinning = true;
 
-  const step = STEPS[_stepIdx];
+  const step = _STEPS[_stepIdx];
   const btn  = $("spinBtn");
   btn.disabled = true; btn.classList.add("going"); btn.textContent = "En rotation...";
 
   let spinPromise;
 
-  if (step.pal === -1) {
-    // Roue Issue — poids calculés dynamiquement selon style joueur vs ennemi
+  if (step.pal === -3) {
+    // ── Roue Examen ───────────────────────────────────────────
+    const weights = Engine.computeExamenWeights();
+    showExamenAnalysis(weights);
+    spinPromise = WheelEngine.spinIssue({
+      canvasId: step.canvasId,
+      startRotation: _stepRots[_stepIdx],
+      weights,
+      onFrame: r => { _stepRots[_stepIdx] = r; },
+    }).then(({ targetIndex, finalRotation }) => {
+      _stepRots[_stepIdx] = finalRotation;
+      const outcome = EXAMEN_OUTCOMES[targetIndex];
+      Engine.setResult("examen", outcome.short);
+      Engine.setResult("examenIdx", targetIndex);
+      showStepResult(step.label, outcome.short, targetIndex === 1 ? "defeat" : "");
+    });
+
+  } else if (step.pal === -1) {
+    // ── Roue Issue (combat) ───────────────────────────────────
     const weights = Engine.computeIssueWeights();
     showCombatAnalysis(weights);
     spinPromise = WheelEngine.spinIssue({
@@ -293,8 +333,9 @@ function spinCurrent() {
       Engine.setResult("outcomeIdx", targetIndex);
       showStepResult(step.label, outcome.short, outcome.life < 0 ? "defeat" : "");
     });
+
   } else if (step.pal === -2) {
-    // Roue Loot
+    // ── Roue Loot ─────────────────────────────────────────────
     spinPromise = WheelEngine.spinLoot({
       canvasId: step.canvasId,
       pool: _lootPool,
@@ -303,12 +344,12 @@ function spinCurrent() {
     }).then(({ targetIndex, finalRotation, lootItem }) => {
       _stepRots[_stepIdx] = finalRotation;
       Engine.setResult("loot", lootItem);
-      const absorbed = Engine.addLoot(lootItem);
+      Engine.addLoot(lootItem);
       showStepResult(step.label, lootItem.name, "loot");
-      return { lootItem, absorbed };
     });
+
   } else {
-    // Roues génériques
+    // ── Roues génériques (perso, antag) ───────────────────────
     const items = _getItems(_stepIdx);
     spinPromise = WheelEngine.spinGeneric({
       canvasId: step.canvasId,
@@ -321,65 +362,77 @@ function spinCurrent() {
       const result = items[targetIndex];
       Engine.setResult(step.id, result);
       if (step.id === "perso") {
-        Engine.setResult("persoStyle", Engine.getPersoStyle(result));
+        const style = Engine.getPersoStyle(result);
+        Engine.setPerso(result, style);
       }
       showStepResult(step.label, result, "");
     });
   }
 
-  spinPromise.then((extra) => {
+  spinPromise.then(() => {
     G.round.spinning = false;
     btn.classList.remove("going");
 
-    if (_stepIdx < STEPS.length - 1) {
-      const prevIdx = _stepIdx;
-      _stepIdx++;
+    const prevStep = _STEPS[_stepIdx];
 
-      // Si on vient de finir la roue Issue → appliquer résultat avant transition
-      if (STEPS[prevIdx].id === "issue") {
-        const result = applyIssue(G.round.results.outcomeIdx);
-        if (result.gameOver) { return; } // gameOver s'occupe de l'overlay
-        // Préparer le pool loot puis transitionner
-        _lootPool = Engine.buildLootPool(8);
+    // Après Issue : appliquer combat
+    if (prevStep.id === "issue") {
+      const combatResult = applyIssue(G.round.results.outcomeIdx);
+      if (combatResult.gameOver) return;
+      _lootPool = Engine.buildLootPool(8);
+    }
+
+    // Après Loot : examen si ready, sinon résumé
+    if (prevStep.id === "loot") {
+      const G2 = Engine.getState();
+      if (!G2.examReady) {
+        btn.textContent = "✓ Round terminé !"; btn.disabled = true;
+        setTimeout(showRoundSummary, 600);
+        return;
       }
+    }
 
-      // Transition : roue précédente sort, nouvelle entre
+    // Après Examen : appliquer résultat
+    if (prevStep.id === "examen") {
+      const examResult = Engine.applyExamen(G.round.results.examenIdx);
+      updateHUD();
+      if (examResult.victory) { setTimeout(showVictory, 800); return; }
+      if (examResult.passed)  { setTimeout(showPromotion, 600); return; }
+      btn.textContent = "✓ Résultat"; btn.disabled = true;
+      setTimeout(showExamFailure, 600);
+      return;
+    }
+
+    // Passer à la roue suivante
+    const prevIdx = _stepIdx;
+    _stepIdx++;
+    if (_stepIdx < _STEPS.length) {
       transitionToNext(prevIdx, _stepIdx, () => {
         btn.disabled = false;
         btn.textContent = "⚡ Tourner";
       });
-
     } else {
-      // Toutes les roues terminées
       btn.textContent = "✓ Round terminé !"; btn.disabled = true;
-      setTimeout(showDestiny, 700);
+      setTimeout(showRoundSummary, 600);
     }
   });
 }
+  const btn  = $("spinBtn");
+  btn.disabled = true; btn.classList.add("going"); btn.textContent = "En rotation...";
+
+  let spinPromise;
 
 function applyIssue(outcomeIdx) {
   const result = Engine.applyOutcome(outcomeIdx);
   updateHUD();
   updateInventoryBar();
-
   const outcome = OUTCOMES[outcomeIdx];
-
-  if (result.usedChance) {
-    showChanceNotice();
-  }
-  if (result.usedHeal) {
-    showHealNotice();
-  }
+  if (result.usedChance) showChanceNotice();
+  if (result.usedHeal)   showHealNotice();
   if (outcome.life < 0 && !result.usedChance) {
     document.body.classList.add("defeat-flash");
     setTimeout(() => document.body.classList.remove("defeat-flash"), 900);
   }
-
-  if (result.victory) {
-    setTimeout(showVictory, 1500);
-    return result;
-  }
-
   return result;
 }
 
@@ -412,8 +465,108 @@ function spinAll() {
   doNext();
 }
 
-// ── DESTINY PANEL ─────────────────────────────────────────────
-function showDestiny() {
+// ── RÉSUMÉ DE ROUND ───────────────────────────────────────────
+// Affiché après loot quand l'examen n'est pas encore dispo
+function showRoundSummary() {
+  const G = Engine.getState();
+  const { perso, antag, outcome, loot, outcomeIdx, persoStyle } = G.round.results;
+  const od = OUTCOMES[outcomeIdx] || OUTCOMES[0];
+  const lootItem = loot;
+  const antagData = Engine.getAntagData(antag);
+  const STYLE_EMOJI = { ninjutsu:"🔥", taijutsu:"💪", genjutsu:"😵" };
+  const STYLE_NOM   = { ninjutsu:"Ninjutsu", taijutsu:"Taijutsu", genjutsu:"Genjutsu" };
+
+  const panel = $("destinyPanel");
+  panel.style.display = "block";
+
+  const grid = $("dGrid");
+  grid.textContent = "";
+  [
+    { label:"Personnage",  emoji: STYLE_EMOJI[persoStyle]||"⚡",    value: perso,   sub: "Style : "+(STYLE_NOM[persoStyle]||"?") },
+    { label:"Antagoniste", emoji: "☠️",                             value: antag,   sub: antagData ? "Faiblesse : "+STYLE_NOM[antagData.weakness] : "" },
+    { label:"Combat",      emoji: od.emoji,                         value: outcome, sub: Engine.currentRank().name },
+    { label:"Butin",       emoji: lootItem ? lootItem.emoji : "📦", value: lootItem ? lootItem.name : "Rien", sub: lootItem ? _typeLabel(lootItem.type) : "" },
+  ].forEach(it => {
+    const d = document.createElement("div"); d.className = "d-item";
+    const l = document.createElement("div"); l.className = "d-lbl"; l.textContent = it.label;
+    const v = document.createElement("div"); v.className = "d-val" + (od.life < 0 ? " defeat" : ""); v.textContent = it.emoji+" "+it.value;
+    const s = document.createElement("div"); s.className = "d-sub"; s.textContent = it.sub;
+    d.appendChild(l); d.appendChild(v); d.appendChild(s); grid.appendChild(d);
+  });
+
+  // Story safe DOM
+  function B(t) { const s = document.createElement("strong"); s.textContent = t; return s; }
+  const story = $("dStory");
+  story.textContent = "";
+  const f = document.createDocumentFragment();
+  f.append(B(perso)); f.append(" affronte "); f.append(B(antag)); f.append(" — "); f.append(B(outcome));
+  f.append(". Butin récupéré : "); f.append(B(lootItem ? lootItem.name : "rien")); f.append(".");
+  story.appendChild(f);
+
+  // Loot panel
+  const lootPanel = $("lootPanel");
+  if (lootItem) {
+    lootPanel.style.display = "block";
+    $("lootItemIcon").textContent = lootItem.emoji;
+    $("lootItemName").textContent = lootItem.name;
+    $("lootItemType").textContent = _typeLabel(lootItem.type)+" · "+_rarityLabel(lootItem.rarity);
+    $("lootItemDesc").textContent = lootItem.desc;
+  } else { lootPanel.style.display = "none"; }
+
+  // Badge
+  const badgeSection = $("badgeSection");
+  if (od.life >= 0) {
+    badgeSection.style.display = "block";
+    $("badgeSvgWrap").innerHTML = makeBadgeSvg(antag, 110);
+    $("badgeNm").textContent    = antag;
+    $("badgeSb").textContent    = od.emoji+" "+outcome;
+  } else { badgeSection.style.display = "none"; }
+
+  panel.classList.add("vis");
+  setTimeout(() => panel.scrollIntoView({ behavior:"smooth", block:"start" }), 100);
+  updateCollection();
+}
+
+// ── ANALYSE EXAMEN ────────────────────────────────────────────
+function showExamenAnalysis(weights) {
+  const total    = weights.reduce((s, w) => s + w.weight, 0);
+  const pctPass  = Math.round(weights[0].weight / total * 100);
+  const lbl      = $("arenaStepLabel");
+  const rank     = Engine.currentRank();
+  const nextRnk  = Engine.nextRank();
+
+  lbl.textContent = "";
+  const l1 = document.createElement("div"); l1.style.cssText = "font-size:14px;margin-bottom:4px;font-weight:700;color:var(--gold)";
+  l1.textContent = "📋 Examen de passage " + rank.name + " → " + (nextRnk ? nextRnk.name : "Kage");
+  const l2 = document.createElement("div"); l2.style.cssText = "font-size:12px;color:var(--text-muted);margin-bottom:2px;";
+  l2.textContent = "Tes items améliorent tes chances.";
+  const l3 = document.createElement("div"); l3.style.cssText = "font-size:12px;color:var(--text-muted);";
+  l3.textContent = "Chance de réussite estimée : " + pctPass + "%";
+  lbl.appendChild(l1); lbl.appendChild(l2); lbl.appendChild(l3);
+}
+
+// ── ÉCHEC EXAMEN ──────────────────────────────────────────────
+function showExamFailure() {
+  const panel = $("destinyPanel");
+  panel.style.display = "block";
+
+  const grid = $("dGrid");
+  grid.textContent = "";
+  const d = document.createElement("div"); d.className = "d-item";
+  const l = document.createElement("div"); l.className = "d-lbl"; l.textContent = "Examen";
+  const v = document.createElement("div"); v.className = "d-val defeat"; v.textContent = "❌ Échec";
+  const s = document.createElement("div"); s.className = "d-sub"; s.textContent = "Pas de perte de vie — tu peux repasser !";
+  d.appendChild(l); d.appendChild(v); d.appendChild(s); grid.appendChild(d);
+
+  const story = $("dStory");
+  story.textContent = "L'examen te glisse entre les doigts. Tu dois retourner te battre, améliorer ton équipement, et retenter ta chance.";
+
+  $("lootPanel").style.display = "none";
+  $("badgeSection").style.display = "none";
+
+  panel.classList.add("vis");
+  setTimeout(() => panel.scrollIntoView({ behavior:"smooth", block:"start" }), 100);
+}
   const G = Engine.getState();
   const { village, perso, antag, outcome, loot, outcomeIdx, persoStyle } = G.round.results;
   const vd  = VILLAGES.find(v => v.short === village) || {};
@@ -579,12 +732,13 @@ function showHealNotice() {
 }
 
 // ── NEXT ROUND ────────────────────────────────────────────────
+// ── ROUND SUIVANT ─────────────────────────────────────────────
 function nextRound() {
   $("destinyPanel").classList.remove("vis");
   $("destinyPanel").style.display = "none";
   _stepIdx  = 0;
   _stepRots = [0, 0, 0, 0, 0];
-  buildRound();
+  buildRound();        // appelle Engine.newRound() en interne
   updateHUD();
   updateInventoryBar();
 }

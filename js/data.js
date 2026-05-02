@@ -63,6 +63,12 @@ const OUTCOMES = [
   { short:"Défaite",    emoji:"💀", xp:0, life:-1, cls:"out-x", wheelColor:"#7F1D1D" },
 ];
 
+// Résultats de la roue Examen — 2 segments, poids calculés par computeExamenWeights()
+const EXAMEN_OUTCOMES = [
+  { short:"Réussite", emoji:"✅", wheelColor:"#059669" },
+  { short:"Échec",    emoji:"❌", wheelColor:"#7F1D1D" },
+];
+
 // ── STYLES DE COMBAT ──────────────────────────────────────────
 // Triangle de faiblesses : Ninjutsu > Taijutsu > Genjutsu > Ninjutsu
 // "bat" = avantage x1.4, "perd" = désavantage x0.6

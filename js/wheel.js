@@ -25,7 +25,6 @@ const WheelEngine = (() => {
       const sa = rotation + i * arc;
       const ea = sa + arc;
 
-      // Segment
       ctx.beginPath();
       ctx.moveTo(cx, cy);
       ctx.arc(cx, cy, r, sa, ea);
@@ -36,7 +35,6 @@ const WheelEngine = (() => {
       ctx.lineWidth = 1.5;
       ctx.stroke();
 
-      // Texte
       ctx.save();
       ctx.translate(cx, cy);
       ctx.rotate(sa + arc / 2);
@@ -50,12 +48,8 @@ const WheelEngine = (() => {
 
       const maxW = r - 26;
       let lbl = items[i];
-      // Tronquer si trop long
-      while (ctx.measureText(lbl).width > maxW && lbl.length > 3) {
-        lbl = lbl.slice(0, -1);
-      }
+      while (ctx.measureText(lbl).width > maxW && lbl.length > 3) lbl = lbl.slice(0, -1);
       if (lbl !== items[i]) lbl += "…";
-
       ctx.fillText(lbl, r - 12, fs / 3);
       ctx.restore();
     }
@@ -66,6 +60,56 @@ const WheelEngine = (() => {
     ctx.strokeStyle = "rgba(232,82,26,.52)";
     ctx.lineWidth = 3;
     ctx.stroke();
+
+    // ── Pointeur fixe en haut ────────────────────────────────────
+    // Dessiné par-dessus la roue, toujours visible, pointe vers 12h
+    const pW = 14;  // demi-largeur base
+    const pTipY = 6;      // pointe Y (haut)
+    const pBaseY = pTipY + 28; // base Y
+
+    // Ombre portée
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,.6)";
+    ctx.shadowBlur  = 8;
+    ctx.shadowOffsetY = 2;
+
+    // Corps du pointeur (triangle)
+    ctx.beginPath();
+    ctx.moveTo(cx,        pTipY);      // pointe
+    ctx.lineTo(cx - pW,   pBaseY);     // bas gauche
+    ctx.lineTo(cx + pW,   pBaseY);     // bas droite
+    ctx.closePath();
+    ctx.fillStyle = "#E8521A";
+    ctx.fill();
+
+    // Contour sombre
+    ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+    ctx.strokeStyle = "#7A2000";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Reflet interne (dégradé)
+    const grad = ctx.createLinearGradient(cx - pW, pTipY, cx + pW, pBaseY);
+    grad.addColorStop(0,   "rgba(255,255,255,.35)");
+    grad.addColorStop(1,   "rgba(255,255,255,0)");
+    ctx.beginPath();
+    ctx.moveTo(cx,        pTipY);
+    ctx.lineTo(cx - pW,   pBaseY);
+    ctx.lineTo(cx + pW,   pBaseY);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Rivet central (petit cercle au-dessus de la pointe)
+    ctx.beginPath();
+    ctx.arc(cx, pBaseY, 5, 0, Math.PI * 2);
+    ctx.fillStyle = "#FF6B2B";
+    ctx.fill();
+    ctx.strokeStyle = "#7A2000";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.restore();
   }
 
   // ── Animation de spin ────────────────────────────────────────
