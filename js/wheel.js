@@ -6,6 +6,7 @@
    ============================================================ */
 
 const WheelEngine = (() => {
+  const SZ = 640; // taille logique canvas (px) — alignée sur la nouvelle taille d'affichage (voir .stack-wrap)
   const PS = SZ / 380; // facteur d'échelle par rapport à la taille de référence d'origine (380px),
                        // utilisé pour agrandir proportionnellement le pointeur, les traits et les polices.
 
