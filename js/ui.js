@@ -417,10 +417,6 @@ function spinCurrent() {
     }
   });
 }
-  const btn  = $("spinBtn");
-  btn.disabled = true; btn.classList.add("going"); btn.textContent = "En rotation...";
-
-  let spinPromise;
 
 function applyIssue(outcomeIdx) {
   const result = Engine.applyOutcome(outcomeIdx);
@@ -453,12 +449,12 @@ function spinAll() {
   _stepRots = [0,0,0,0,0];
 
   function doNext() {
-    if (_stepIdx >= STEPS.length) return;
+    if (_stepIdx >= _STEPS.length) return;
     spinCurrent();
     const chk = setInterval(() => {
       if (!Engine.getState().round.spinning) {
         clearInterval(chk);
-        if (_stepIdx < STEPS.length) setTimeout(doNext, 320);
+        if (_stepIdx < _STEPS.length) setTimeout(doNext, 320);
       }
     }, 80);
   }
@@ -566,78 +562,6 @@ function showExamFailure() {
 
   panel.classList.add("vis");
   setTimeout(() => panel.scrollIntoView({ behavior:"smooth", block:"start" }), 100);
-}
-  const G = Engine.getState();
-  const { village, perso, antag, outcome, loot, outcomeIdx, persoStyle } = G.round.results;
-  const vd  = VILLAGES.find(v => v.short === village) || {};
-  const od  = OUTCOMES[outcomeIdx] || OUTCOMES[0];
-  const lootItem = loot;
-  const antagData = Engine.getAntagData(antag);
-
-  const STYLE_EMOJI = { ninjutsu:"🔥", taijutsu:"💪", genjutsu:"😵" };
-  const STYLE_NOM   = { ninjutsu:"Ninjutsu", taijutsu:"Taijutsu", genjutsu:"Genjutsu" };
-
-  const panel = $("destinyPanel");
-  panel.style.display = "block";
-
-  // Grid — safe DOM (Règle 1)
-  const grid = $("dGrid");
-  grid.textContent = "";
-  [
-    { label:"Village",     emoji: vd.emoji||"🏘️",                 value: village,  sub: "Village du "+(vd.symbol||"Destin") },
-    { label:"Personnage",  emoji: STYLE_EMOJI[persoStyle]||"⚡",    value: perso,    sub: "Style : "+(STYLE_NOM[persoStyle]||"?") },
-    { label:"Antagoniste", emoji: "☠️",                             value: antag,    sub: antagData ? "Faiblesse : "+STYLE_NOM[antagData.weakness]+" / Résistance : "+STYLE_NOM[antagData.resistance] : "Ennemi mystérieux" },
-    { label:"Issue",       emoji: od.emoji,                         value: outcome,  sub: Engine.currentRank().name + " — " + (G.periode ? G.periode.short : "") },
-  ].forEach(it => {
-    const d = document.createElement("div"); d.className = "d-item";
-    const l = document.createElement("div"); l.className = "d-lbl"; l.textContent = it.label;
-    const v = document.createElement("div"); v.className = "d-val" + (od.life < 0 ? " defeat" : ""); v.textContent = it.emoji+" "+it.value;
-    const s = document.createElement("div"); s.className = "d-sub"; s.textContent = it.sub;
-    d.appendChild(l); d.appendChild(v); d.appendChild(s); grid.appendChild(d);
-  });
-
-  // Story — safe DOM (Règle 1)
-  function B(t) { const s = document.createElement("strong"); s.textContent = t; return s; }
-  const tpls = [
-    (v,c,a,o) => { const f = document.createDocumentFragment(); f.append("Dans le village de "); f.append(B(v)); f.append(", "); f.append(B(c)); f.append(" croise le chemin de "); f.append(B(a)); f.append(". Issue : "); f.append(B(o)); f.append("."); return f; },
-    (v,c,a,o) => { const f = document.createDocumentFragment(); f.append(B(c)); f.append(" de "); f.append(B(v)); f.append(" devait vaincre "); f.append(B(a)); f.append(" à tout prix. Le dénouement : "); f.append(B(o)); f.append("."); return f; },
-    (v,c,a,o) => { const f = document.createDocumentFragment(); f.append(B(a)); f.append(" croyait la victoire assurée. Mais "); f.append(B(c)); f.append(" de "); f.append(B(v)); f.append(" en a décidé autrement — "); f.append(B(o)); f.append("."); return f; },
-  ];
-  const story = $("dStory");
-  story.textContent = "";
-  story.appendChild(tpls[Math.floor(Math.random() * tpls.length)](village, perso, antag, outcome));
-
-  // Loot panel
-  const lootPanel = $("lootPanel");
-  if (lootItem) {
-    lootPanel.style.display = "block";
-    $("lootItemIcon").textContent = lootItem.emoji;
-    $("lootItemName").textContent = lootItem.name;
-    $("lootItemType").textContent = _typeLabel(lootItem.type) + " · " + _rarityLabel(lootItem.rarity);
-    $("lootItemDesc").textContent = lootItem.desc;
-  } else {
-    lootPanel.style.display = "none";
-  }
-
-  // Badge
-  const badgeSection = $("badgeSection");
-  if (od.life >= 0) {
-    badgeSection.style.display = "block";
-    // SÉCURITÉ : makeBadgeSvg utilise hashStr(name) — constantes uniquement
-    $("badgeSvgWrap").innerHTML = makeBadgeSvg(antag, 110);
-    $("badgeNm").textContent    = antag;
-    $("badgeSb").textContent    = od.emoji + " " + outcome;
-  } else {
-    badgeSection.style.display = "none";
-  }
-
-  panel.classList.add("vis");
-  setTimeout(() => {
-    panel.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, 100);
-
-  // Collection
-  updateCollection();
 }
 
 function _typeLabel(t) {
@@ -760,7 +684,7 @@ function showPromotion() {
 function closePromo() {
   $("promoOv").classList.remove("show");
   updateRankHUD();
-  showDestiny();
+  showRoundSummary();
 }
 
 function showVictory() {
