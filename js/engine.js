@@ -153,7 +153,7 @@ const Engine = (() => {
     let usedChance = false, usedHeal = false, lifeChange = 0;
 
     if (outcome.life < 0) {
-      const chanceIdx = G.inventory.findIndex(it => it.effect === "chance");
+      const chanceIdx = G.inventory.findIndex(it => it.effect === "chance" && it.armed !== false);
       if (chanceIdx !== -1) {
         G.inventory.splice(chanceIdx, 1);
         usedChance = true;
@@ -262,8 +262,32 @@ const Engine = (() => {
       G.lives    = G.livesMax;
       return { absorbed: true, message: "Vie bonus ! Tu as maintenant " + G.lives + " vies." };
     }
-    G.inventory.push({ ...item });
+    // Les talismans "chance" sont armés par défaut (déclenchement automatique
+    // à la prochaine défaite) — le joueur peut les désarmer depuis l'inventaire.
+    G.inventory.push({ ...item, armed: item.effect === "chance" ? true : undefined });
     return { absorbed: false };
+  }
+
+  // ── Utiliser un soin immédiatement, avant un combat ──────────
+  // Retourne { ok, reason } — ok:false si l'item n'existe pas ou si les
+  // vies sont déjà au maximum (rien à soigner).
+  function useHealNow(idx) {
+    const it = G.inventory[idx];
+    if (!it || it.effect !== "heal") return { ok: false, reason: "invalid" };
+    if (G.lives >= G.livesMax) return { ok: false, reason: "full" };
+    G.inventory.splice(idx, 1);
+    G.lives = Math.min(G.livesMax, G.lives + 1);
+    return { ok: true };
+  }
+
+  // ── Armer / désarmer un talisman "chance" ────────────────────
+  // Un talisman désarmé reste dans l'inventaire (garde son bonus d'examen)
+  // mais ne s'active plus automatiquement lors d'une défaite.
+  function toggleChanceArmed(idx) {
+    const it = G.inventory[idx];
+    if (!it || it.effect !== "chance") return null;
+    it.armed = it.armed === false ? true : false;
+    return it.armed;
   }
 
   // ── Tirer un loot aléatoire ──────────────────────────────────
@@ -353,6 +377,7 @@ const Engine = (() => {
     getState, setVillage, getStarters, getPersoStyle, getAntags, getAntagData,
     computeIssueWeights, computeExamenWeights,
     setResult, setPerso, applyOutcome, applyExamen, addLoot, buildLootPool,
+    useHealNow, toggleChanceArmed,
     newRound, fullReset, currentRank, nextRank, rankPct,
   };
 })();
