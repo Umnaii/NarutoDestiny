@@ -57,6 +57,14 @@ function buildVillageScreen() {
 
 let _selectedVillageId = null;
 
+// Réinitialise complètement l'état de sélection du village (variable +
+// classe visuelle du bouton de confirmation, qui restait "ready" sinon
+// après une première partie).
+function resetVillageSelection() {
+  _selectedVillageId = null;
+  $("villageConfirm").classList.remove("ready");
+}
+
 function selectVillage(id, cardEl) {
   document.querySelectorAll("#villageCards .period-card").forEach(c => c.classList.remove("selected"));
   cardEl.classList.add("selected");
@@ -78,8 +86,14 @@ function startGame() {
   updateHUD();
   updateInventoryBar();
   $("collSection").classList.remove("show");
-  $("destinyPanel").classList.remove("vis");
-  $("destinyPanel").style.display = "none";
+  resetRecapPanel();
+}
+
+// Remet le panneau de récapitulatif (colonne de droite) dans son état
+// vide, affiché tant qu'aucun round n'est terminé.
+function resetRecapPanel() {
+  $("recapContent").style.display = "none";
+  $("recapEmpty").style.display = "flex";
 }
 
 // ── HUD ───────────────────────────────────────────────────────
@@ -137,6 +151,39 @@ function animFill(id, target) {
 }
 
 // ── INVENTORY BAR ─────────────────────────────────────────────
+const STYLE_NOM_INV = { ninjutsu:"Ninjutsu", taijutsu:"Taijutsu", genjutsu:"Genjutsu" };
+
+// Texte lisible du bonus/malus réel d'un objet, calculé à partir de la
+// logique de pondération d'Engine (computeIssueWeights / computeExamenWeights)
+// pour qu'il reste toujours synchronisé avec l'effet réel en jeu.
+function _itemBonusText(item) {
+  const G = Engine.getState();
+  if (item.effect === "heal") {
+    return "💊 Restaure automatiquement 1 vie à la prochaine défaite (usage unique).";
+  }
+  if (item.effect === "chance") {
+    return "🎴 Annule automatiquement ta prochaine défaite (usage unique) · +20 pts de réussite à l'examen.";
+  }
+  if (item.type === "weapon") {
+    return "+5 pts de victoire en combat · +4 pts de réussite à l'examen.";
+  }
+  if (item.type === "ninjutsu" || item.type === "taijutsu" || item.type === "genjutsu") {
+    const matches = item.type === G.persoStyle;
+    return matches
+      ? "+8 pts de victoire en combat (ton style : " + STYLE_NOM_INV[item.type] + ") · +6 pts de réussite à l'examen."
+      : "+6 pts de réussite à l'examen (style " + STYLE_NOM_INV[item.type] + " ≠ le tien).";
+  }
+  return item.desc;
+}
+
+function _itemIsUsableNow(item) {
+  const G = Engine.getState();
+  if (G.round.spinning) return false;
+  if (item.effect === "heal")   return true; // toujours cliquable (message si vies pleines)
+  if (item.effect === "chance") return true; // toujours cliquable (armer/désarmer)
+  return false;
+}
+
 function updateInventoryBar() {
   const G   = Engine.getState();
   const bar = $("invItems");
@@ -151,16 +198,91 @@ function updateInventoryBar() {
   }
 
   G.inventory.forEach((item, i) => {
-    const el = document.createElement("span");
-    el.className = "inv-item " + (TYPE_CSS[item.type] || "");
-    el.title = item.desc;
+    const usable = _itemIsUsableNow(item);
+    const el = document.createElement("div");
+    el.className = "inv-item " + (TYPE_CSS[item.type] || "") + (usable ? " usable" : "");
 
     const ico  = document.createElement("span"); ico.className = "loot-icon"; ico.textContent = item.emoji;
-    const name = document.createElement("span"); name.textContent = item.name;
 
-    el.appendChild(ico); el.appendChild(name);
+    const body = document.createElement("div"); body.className = "inv-item-body";
+    const name = document.createElement("div"); name.className = "inv-item-name"; name.textContent = item.name;
+    const bonus = document.createElement("div"); bonus.className = "inv-item-bonus"; bonus.textContent = _itemBonusText(item);
+    body.appendChild(name); body.appendChild(bonus);
+
+    if (item.effect === "chance") {
+      const state = document.createElement("div");
+      const armed = item.armed !== false;
+      state.className = "inv-item-state " + (armed ? "state-on" : "state-off");
+      state.textContent = armed ? "✓ Protection active" : "○ Protection désactivée";
+      body.appendChild(state);
+    }
+
+    if (usable) {
+      const hint = document.createElement("div");
+      hint.className = "inv-item-tap-hint";
+      hint.textContent = "Toucher pour l'utiliser avant le combat →";
+      body.appendChild(hint);
+      el.addEventListener("click", () => openItemUsePopup(i));
+    }
+
+    el.appendChild(ico); el.appendChild(body);
     bar.appendChild(el);
   });
+}
+
+// ── POPUP D'UTILISATION D'OBJET AVANT COMBAT ─────────────────
+function openItemUsePopup(idx) {
+  const G = Engine.getState();
+  const item = G.inventory[idx];
+  if (!item) return;
+
+  $("iuIcon").textContent = item.emoji;
+  $("iuName").textContent = item.name;
+  $("iuDesc").textContent = item.desc;
+  $("iuBonus").textContent = _itemBonusText(item);
+
+  const actions = $("iuActions");
+  actions.textContent = "";
+
+  if (item.effect === "heal") {
+    const canHeal = G.lives < G.livesMax;
+    const useBtn = document.createElement("button");
+    useBtn.className = "btn-next-round";
+    useBtn.textContent = canHeal ? "💊 Utiliser maintenant (+1 vie)" : "Vies déjà au maximum";
+    useBtn.disabled = !canHeal;
+    if (!canHeal) useBtn.style.cssText = "opacity:.45;cursor:not-allowed;";
+    useBtn.onclick = () => {
+      const res = Engine.useHealNow(idx);
+      if (res.ok) { updateHUD(); updateInventoryBar(); }
+      closeItemUsePopup();
+    };
+    actions.appendChild(useBtn);
+  }
+
+  if (item.effect === "chance") {
+    const armed = item.armed !== false;
+    const toggleBtn = document.createElement("button");
+    toggleBtn.className = "btn-next-round";
+    toggleBtn.textContent = armed ? "○ Désactiver la protection" : "✓ Réactiver la protection";
+    toggleBtn.onclick = () => {
+      Engine.toggleChanceArmed(idx);
+      updateInventoryBar();
+      closeItemUsePopup();
+    };
+    actions.appendChild(toggleBtn);
+  }
+
+  const closeBtn = document.createElement("button");
+  closeBtn.className = "iu-btn-secondary";
+  closeBtn.textContent = "Garder tel quel";
+  closeBtn.onclick = closeItemUsePopup;
+  actions.appendChild(closeBtn);
+
+  $("itemUseOv").classList.add("show");
+}
+
+function closeItemUsePopup() {
+  $("itemUseOv").classList.remove("show");
 }
 
 // ── ROUND BUILDER ─────────────────────────────────────────────
@@ -204,7 +326,11 @@ function buildRound() {
 
     const cv = document.createElement("canvas");
     cv.id = step.canvasId;
-    cv.width = WheelEngine.SZ; cv.height = WheelEngine.SZ;
+    // SÉCURITÉ/QUALITÉ : résolution physique = taille logique * devicePixelRatio
+    // pour un rendu net (texte non flou) sur écrans Retina/HiDPI.
+    const dpr = window.devicePixelRatio || 1;
+    cv.width  = WheelEngine.SZ * dpr;
+    cv.height = WheelEngine.SZ * dpr;
     cv.style.cssText = "width:100%;height:100%;border-radius:50%;display:block;";
 
     const dot = document.createElement("div"); dot.className = "wheel-dot";
@@ -233,14 +359,18 @@ function _initWheelDraw(stepIdx) {
   const step = _STEPS[stepIdx];
   if (!step) return;
   if (step.pal === -1) {
-    WheelEngine.drawIssue(step.canvasId, 0);
+    // Roue combat — dessinée d'emblée avec les poids calculés (parts proportionnelles)
+    const weights = Engine.computeIssueWeights();
+    const items   = weights.map(w => w.short);
+    const colors  = weights.map(w => w.wheelColor);
+    const w       = weights.map(w => w.weight);
+    WheelEngine.draw(step.canvasId, items, colors, 0, w);
   } else if (step.pal === -2) {
     _lootPool = Engine.buildLootPool(8);
     WheelEngine.drawLoot(step.canvasId, _lootPool, 0);
   } else if (step.pal === -3) {
-    // Roue examen — dessinée avec les poids calculés
+    // Roue examen — dessinée avec les poids calculés, parts proportionnelles
     const weights = Engine.computeExamenWeights();
-    WheelEngine.drawIssue(step.canvasId, 0); // même moteur que Issue (2 couleurs)
     _drawExamen(step.canvasId, weights, 0);
   } else {
     const items = _getItems(stepIdx);
@@ -248,11 +378,12 @@ function _initWheelDraw(stepIdx) {
   }
 }
 
-// Dessin roue examen (2 segments)
+// Dessin roue examen (2 segments, parts proportionnelles aux chances réelles)
 function _drawExamen(canvasId, weights, rotation) {
   const items  = weights.map(w => w.short);
   const colors = weights.map(w => w.wheelColor);
-  WheelEngine.draw(canvasId, items, colors, rotation);
+  const w      = weights.map(w => w.weight);
+  WheelEngine.draw(canvasId, items, colors, rotation, w);
 }
 
 function _getItems(stepIdx) {
@@ -473,7 +604,8 @@ function showRoundSummary() {
   const STYLE_NOM   = { ninjutsu:"Ninjutsu", taijutsu:"Taijutsu", genjutsu:"Genjutsu" };
 
   const panel = $("destinyPanel");
-  panel.style.display = "block";
+  $("recapEmpty").style.display = "none";
+  $("recapContent").style.display = "flex";
 
   const grid = $("dGrid");
   grid.textContent = "";
@@ -518,8 +650,7 @@ function showRoundSummary() {
     $("badgeSb").textContent    = od.emoji+" "+outcome;
   } else { badgeSection.style.display = "none"; }
 
-  panel.classList.add("vis");
-  setTimeout(() => panel.scrollIntoView({ behavior:"smooth", block:"start" }), 100);
+  panel.scrollTop = 0;
   updateCollection();
 }
 
@@ -544,7 +675,8 @@ function showExamenAnalysis(weights) {
 // ── ÉCHEC EXAMEN ──────────────────────────────────────────────
 function showExamFailure() {
   const panel = $("destinyPanel");
-  panel.style.display = "block";
+  $("recapEmpty").style.display = "none";
+  $("recapContent").style.display = "flex";
 
   const grid = $("dGrid");
   grid.textContent = "";
@@ -560,8 +692,7 @@ function showExamFailure() {
   $("lootPanel").style.display = "none";
   $("badgeSection").style.display = "none";
 
-  panel.classList.add("vis");
-  setTimeout(() => panel.scrollIntoView({ behavior:"smooth", block:"start" }), 100);
+  panel.scrollTop = 0;
 }
 
 function _typeLabel(t) {
@@ -643,7 +774,7 @@ function showChanceNotice() {
   const el = document.createElement("div");
   el.className = "chance-used-notice";
   el.textContent = "🎴 Talisman utilisé automatiquement — défaite annulée !";
-  $("destinyPanel").appendChild(el);
+  $("recapContent").appendChild(el);
   setTimeout(() => el.remove(), 5000);
 }
 
@@ -651,15 +782,14 @@ function showHealNotice() {
   const el = document.createElement("div");
   el.className = "heal-used-notice";
   el.textContent = "💊 Soin utilisé automatiquement — une vie récupérée !";
-  $("destinyPanel").appendChild(el);
+  $("recapContent").appendChild(el);
   setTimeout(() => el.remove(), 5000);
 }
 
 // ── NEXT ROUND ────────────────────────────────────────────────
 // ── ROUND SUIVANT ─────────────────────────────────────────────
 function nextRound() {
-  $("destinyPanel").classList.remove("vis");
-  $("destinyPanel").style.display = "none";
+  resetRecapPanel();
   _stepIdx  = 0;
   _stepRots = [0, 0, 0, 0, 0];
   buildRound();        // appelle Engine.newRound() en interne
@@ -700,7 +830,15 @@ function showVictory() {
 
 function closeKage() {
   $("kageOv").classList.remove("show");
-  updateRankHUD();
+  // Une partie gagnée (rang Kage atteint) est terminée : on réinitialise
+  // complètement l'état et on ramène le joueur à l'écran de sélection du
+  // village pour qu'il puisse relancer une nouvelle aventure.
+  Engine.fullReset();
+  resetVillageSelection();
+  _stepIdx  = 0;
+  _stepRots = [0, 0, 0, 0, 0];
+  buildVillageScreen();
+  showScreen("screenVillage");
 }
 
 function showGameOver() {
@@ -714,7 +852,7 @@ function showGameOver() {
 function closeGameOver() {
   $("goOv").classList.remove("show");
   Engine.fullReset();
-  _selectedVillageId = null;
+  resetVillageSelection();
   _stepIdx  = 0;
   _stepRots = [0, 0, 0, 0, 0];
   buildVillageScreen();
