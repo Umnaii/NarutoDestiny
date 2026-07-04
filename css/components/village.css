@@ -1,0 +1,72 @@
+/* ============================================================
+   NARUTO DESTINY WHEEL — components/village.css
+   Écran de sélection du village (cartes + bouton de confirmation).
+   Extrait de style.css lors du refactoring Phase 1.
+   ============================================================ */
+
+/* ── PERIOD SELECT SCREEN ── */
+#screenPeriod { animation: fadeIn .5s ease both; }
+
+.period-intro {
+  text-align: center;
+  font-size: 16px; color: var(--text-muted);
+  max-width: 440px; margin: 0 auto 32px;
+  line-height: 1.6; font-weight: 500;
+}
+
+.period-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 18px;
+  margin-bottom: 16px;
+}
+
+.period-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px 18px 20px;
+  cursor: pointer;
+  transition: border-color .25s, transform .2s, box-shadow .25s;
+  text-align: center;
+  position: relative; overflow: hidden;
+}
+.period-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--orange), transparent);
+  opacity: 0; transition: opacity .25s;
+}
+.period-card:hover { border-color: rgba(232,82,26,.55); transform: translateY(-3px); box-shadow: 0 8px 24px rgba(232,82,26,.2); }
+.period-card:hover::before { opacity: 1; }
+.period-card.selected { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(212,175,55,.3); }
+.period-card.selected::before { background: linear-gradient(90deg,transparent,var(--gold),transparent); opacity: 1; }
+
+.pc-emoji { font-size: 36px; display: block; margin-bottom: 10px; }
+.pc-name {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 13px; font-weight: 700; color: var(--text);
+  margin-bottom: 8px; line-height: 1.2;
+}
+.pc-desc { font-size: 13px; color: var(--text-muted); line-height: 1.4; }
+
+.period-confirm {
+  display: block; margin: 24px auto 0;
+  padding: 14px 48px;
+  border: none; border-radius: 12px;
+  background: linear-gradient(135deg, var(--orange-dark), var(--orange));
+  color: #fff; font-family: 'Cinzel Decorative', serif;
+  font-size: 14px; font-weight: 700; cursor: pointer;
+  transition: all .22s; box-shadow: 0 6px 22px rgba(232,82,26,.3);
+  opacity: .45; pointer-events: none;
+}
+.period-confirm.ready { opacity: 1; pointer-events: auto; }
+.period-confirm.ready:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(232,82,26,.45); }
+
+/* ── RESPONSIVE ── */
+@media(max-width:520px){
+  .period-cards{ grid-template-columns:1fr 1fr; }
+}
+@media(max-width:360px){
+  .period-cards{ grid-template-columns:1fr; }
+}

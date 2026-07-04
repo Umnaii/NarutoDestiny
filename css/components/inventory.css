@@ -1,0 +1,110 @@
+/* ============================================================
+   NARUTO DESTINY WHEEL — components/inventory.css
+   Barre d'inventaire (sidebar gauche) + popup d'utilisation d'objet.
+   Extrait de style.css lors du refactoring Phase 1.
+   ============================================================ */
+
+/* ── INVENTORY BAR ──
+   Occupe tout l'espace restant de la sidebar gauche, même vide, pour
+   donner l'impression d'un inventaire large plutôt que d'un simple
+   bandeau compact. */
+.inventory {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 22px 24px;
+  flex: 1;
+  min-height: 0;
+  display: flex; flex-direction: column;
+}
+.inv-label {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 12px; letter-spacing: .2em; color: var(--text-muted);
+  text-transform: uppercase; margin-bottom: 14px;
+  flex-shrink: 0;
+}
+.inv-items {
+  display: flex; flex-direction: column; gap: 10px;
+  flex: 1; min-height: 0;
+  overflow-y: auto;
+}
+/* Liste compacte : icône + nom uniquement, le détail s'ouvre au clic (popup) —
+   cliquable et surlignée au survol/focus pour signaler qu'on peut l'agrandir. */
+.inv-item {
+  background: var(--dark3);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 14px; font-weight: 600;
+  display: flex; align-items: center; gap: 12px;
+  animation: itemPop .4s cubic-bezier(.34,1.56,.64,1) both;
+  text-align: left;
+  cursor: pointer;
+  transition: background .18s, transform .15s, border-color .18s;
+}
+.inv-item:hover, .inv-item:focus-visible {
+  background: rgba(255,255,255,.06);
+  transform: scale(1.05);
+  outline: none;
+}
+.inv-item:active { transform: scale(1.02); }
+.inv-item.used { opacity: .35; text-decoration: line-through; }
+.inv-item-heal  { border-color: rgba(74,222,128,.3); }
+.inv-item-chance{ border-color: rgba(212,175,55,.3); }
+.inv-item-weapon{ border-color: rgba(232,82,26,.3); }
+.inv-item-tech  { border-color: rgba(192,132,252,.3); }
+.inv-item-boost { border-color: rgba(224,188,76,.45); }
+.inv-empty {
+  flex: 1;
+  display: flex; align-items: center; justify-content: center;
+  text-align: center;
+  font-size: 14px; color: var(--text-muted); font-style: italic; line-height: 1.6;
+  border: 1px dashed var(--border); border-radius: 14px;
+  padding: 24px;
+}
+
+.inv-icon-wrap { position: relative; flex-shrink: 0; line-height: 1; }
+.inv-item .loot-icon { font-size: 19px; line-height: 1.3; }
+.inv-needs-use {
+  position: absolute; top: -9px; right: -10px;
+  font-size: 13px; line-height: 1;
+  animation: needsUsePulse 1.6s ease-in-out infinite;
+}
+@keyframes needsUsePulse {
+  0%,100% { transform: scale(1); }
+  50%     { transform: scale(1.25); }
+}
+.inv-item-name { font-size: 14px; font-weight: 700; color: var(--text); }
+.inv-item-heal   .inv-item-name { color: var(--green); }
+.inv-item-chance .inv-item-name { color: var(--gold); }
+.inv-item-weapon .inv-item-name { color: var(--orange-light); }
+.inv-item-tech   .inv-item-name { color: var(--purple); }
+.inv-item-boost  .inv-item-name { color: var(--gold-light); }
+
+@keyframes itemPop {
+  from { opacity:0; transform:scale(.6); }
+  to   { opacity:1; transform:scale(1); }
+}
+
+/* ── POPUP D'UTILISATION D'OBJET ── */
+.ov-box.item-use-box { max-width: 380px; }
+.iu-icon { font-size: 46px; display: block; margin-bottom: 10px; }
+.iu-name {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 19px; color: var(--gold-light); margin-bottom: 8px;
+}
+.iu-desc { font-size: 14px; color: var(--text-muted); margin-bottom: 6px; line-height: 1.5; }
+.iu-bonus {
+  font-size: 13px; color: var(--text); background: rgba(255,255,255,.04);
+  border-radius: 8px; padding: 8px 12px; margin: 10px 0 4px; line-height: 1.5;
+}
+.iu-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
+.iu-actions .btn-next-round { margin: 0; }
+.iu-btn-secondary {
+  padding: 12px 28px; border: 1px solid var(--border);
+  border-radius: 11px; background: transparent;
+  color: var(--text-muted); font-family: 'Rajdhani', sans-serif;
+  font-size: 13px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; cursor: pointer; transition: all .2s;
+}
+.iu-btn-secondary:hover { border-color: var(--orange); color: var(--orange); }

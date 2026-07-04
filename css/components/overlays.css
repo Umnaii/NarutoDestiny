@@ -1,0 +1,82 @@
+/* ============================================================
+   NARUTO DESTINY WHEEL — components/overlays.css
+   Overlays plein écran : promotion, victoire (Kage), game over, popup objet.
+   Extrait de style.css lors du refactoring Phase 1.
+   ============================================================ */
+
+.overlay {
+  position: fixed; inset: 0; z-index: 999;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity .4s;
+}
+.overlay.show { opacity: 1; pointer-events: auto; }
+
+.overlay-bg-dark  { background: rgba(0,0,0,.88); }
+.overlay-bg-kage  { background: rgba(0,0,0,.95); }
+.overlay-bg-over  { background: rgba(10,0,0,.94); }
+
+.ov-box {
+  background: var(--panel);
+  border-radius: 22px; padding: 44px 36px;
+  text-align: center; max-width: 400px; width: 90%;
+  animation: ovIn .55s cubic-bezier(.34,1.26,.64,1) both;
+}
+.ov-box.wide { max-width: 500px; }
+.ov-box.recap-box { max-height: 85vh; overflow-y: auto; }
+
+@keyframes ovIn  { from{transform:scale(.65);opacity:0;} to{transform:scale(1);opacity:1;} }
+
+.ov-lbl {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 10px; letter-spacing: .3em; color: var(--gold);
+  text-transform: uppercase; margin-bottom: 12px;
+}
+.ov-title {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: clamp(22px, 5vw, 34px); font-weight: 900;
+  color: var(--orange); line-height: 1.1; margin-bottom: 8px;
+  text-shadow: 0 0 30px rgba(232,82,26,.5);
+}
+.ov-title.gold { color: var(--gold); text-shadow: 0 0 40px rgba(212,175,55,.5); }
+.ov-title.red  { color: var(--red);  text-shadow: 0 0 30px rgba(204,26,26,.5); }
+.ov-sub { font-size: 16px; color: var(--text-muted); margin-bottom: 24px; font-weight: 500; }
+.ov-emblem { display: block; margin: 0 auto 22px; }
+
+.ov-border-gold { border: 1px solid rgba(212,175,55,.5); }
+.ov-border-red  { border: 1px solid rgba(204,26,26,.4); }
+
+.kage-float { animation: kfl 2.5s ease-in-out infinite; font-size: 64px; display: block; margin-bottom: 12px; }
+@keyframes kfl { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-12px);} }
+
+.gameover-skull { font-size: 60px; animation: skPulse 1.5s ease-in-out infinite; display: block; margin-bottom: 12px; }
+@keyframes skPulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.12) rotate(-5deg);} }
+
+.promo-border { border: 1px solid rgba(212,175,55,.5); }
+
+/* ── HISTORIQUE ADVERSAIRE (victoires / nuls / défaites) ── */
+.antag-hist-img {
+  width: 96px; height: 96px; border-radius: 16px;
+  object-fit: cover; object-position: top center;
+  border: 1px solid var(--border-gold);
+  display: block; margin: 0 auto 16px;
+}
+.antag-hist-stats { display: flex; gap: 12px; margin-bottom: 24px; }
+.ahs-tile {
+  flex: 1; border-radius: 14px; padding: 14px 8px;
+  background: var(--dark3); border: 1px solid rgba(255,255,255,.06);
+}
+.ahs-val { font-size: 24px; font-weight: 900; font-family: 'Cinzel Decorative', serif; }
+.ahs-lbl {
+  font-size: 10px; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--text-muted); margin-top: 4px;
+}
+.ahs-win  .ahs-val { color: var(--green); }
+.ahs-draw .ahs-val { color: var(--blue); }
+.ahs-loss .ahs-val { color: var(--red); }
+
+/* ── TUTORIEL OBJET À ACTIVATION MANUELLE ── */
+.mu-ninja { font-size: 48px; display: block; margin-bottom: 8px; }
+.manual-use-box #muIcon { font-size: 34px; display: block; margin-bottom: 4px; }
+.manual-use-box #muName {
+  font-size: 16px; font-weight: 700; color: var(--gold-light); margin-bottom: 14px;
+}

@@ -1,0 +1,98 @@
+/* ============================================================
+   NARUTO DESTINY WHEEL — base.css
+   Variables, reset, structure de base (body, screens, wrap, header).
+   Extrait de style.css lors du refactoring Phase 1.
+   SÉCURITÉ : aucune donnée utilisateur dans ce fichier.
+   ============================================================ */
+
+:root {
+  --orange:      #E8521A;
+  --orange-dark: #B83D0E;
+  --orange-light:#F97316;
+  --red:         #E5484D;
+  --dark:        #1E1912;
+  --dark2:       #251F17;
+  --dark3:       #332B20;
+  --panel:       #26201A;
+  --panel2:      #332B21;
+  --text:        #F7F1E1;
+  --text-muted:  #B7AB8C;
+  --gold:        #E0BC4C;
+  --gold-light:  #F3D673;
+  --border:      rgba(232,82,26,0.34);
+  --border-gold: rgba(224,188,76,0.42);
+  --green:       #4ade80;
+  --blue:        #60a5fa;
+  --purple:      #c084fc;
+}
+
+/* ── RESET & BASE ── */
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--dark);
+  color: var(--text);
+  font-family: 'Rajdhani', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+  position: relative;
+}
+
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(ellipse 60% 40% at 50% 0%,  rgba(232,82,26,.16) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 60% at 10% 80%,  rgba(150,80,30,.11) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 60% at 90% 20%,  rgba(70,100,190,.08) 0%, transparent 60%);
+  pointer-events: none; z-index: 0;
+}
+
+.bg-pattern {
+  position: fixed; inset: 0; opacity: .045;
+  background-image: repeating-linear-gradient(
+    45deg, var(--orange) 0px, var(--orange) 1px, transparent 1px, transparent 40px
+  );
+  pointer-events: none; z-index: 0;
+}
+
+/* ── SCREENS ── */
+.screen { display: none; position: relative; z-index: 1; }
+.screen.active { display: block; }
+
+/* ── WRAP ── */
+.wrap {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 20px 100px;
+}
+
+/* ── HEADER ── */
+header {
+  text-align: center;
+  padding: 40px 20px 20px;
+}
+
+.h-emblem { display: inline-block; width: 56px; height: 56px; margin-bottom: 12px; }
+
+h1 {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: clamp(22px, 5vw, 44px);
+  font-weight: 900;
+  color: var(--orange);
+  letter-spacing: .04em;
+  line-height: 1.1;
+  text-shadow: 0 0 40px rgba(232,82,26,.4), 0 2px 0 rgba(0,0,0,.8);
+}
+h1 span {
+  display: block; font-size: .42em; color: var(--gold);
+  letter-spacing: .26em; margin-top: 6px;
+}
+.h-line {
+  width: 180px; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--orange), transparent);
+  margin: 14px auto 0;
+}
+
+/* ── KEYFRAMES PARTAGÉS ── */
+@keyframes fadeIn{ from{opacity:0;} to{opacity:1;} }

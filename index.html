@@ -14,8 +14,17 @@
            frame-ancestors 'none';">
 <title>Naruto Destiny Wheel</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css">
-<link rel="stylesheet" href="css/illustrations.css">
+<!-- Base — variables, reset, structure commune -->
+<link rel="stylesheet" href="css/base.css">
+<!-- Composants — un fichier par zone de l'écran de jeu -->
+<link rel="stylesheet" href="css/components/village.css">
+<link rel="stylesheet" href="css/components/layout.css">
+<link rel="stylesheet" href="css/components/hud.css">
+<link rel="stylesheet" href="css/components/inventory.css">
+<link rel="stylesheet" href="css/components/arena.css">
+<link rel="stylesheet" href="css/components/recap.css">
+<link rel="stylesheet" href="css/components/overlays.css">
+<link rel="stylesheet" href="css/components/illustrations.css">
 </head>
 <body>
 <div class="bg-pattern" aria-hidden="true"></div>
@@ -73,7 +82,7 @@
 
     <div class="game-layout">
 
-      <!-- Colonne 1/3 — vies, rang, inventaire, collection -->
+      <!-- Colonne 1/3 — vies, rang, inventaire -->
       <aside class="sidebar-left" role="region" aria-label="État du joueur">
 
         <!-- HUD : vies + rang -->
@@ -103,19 +112,21 @@
 
         </div>
 
-        <!-- Inventaire -->
+        <!-- Portrait du personnage joué (masqué tant qu'aucune image n'est disponible) -->
+        <div class="portrait-box" id="persoPortraitBox" style="display:none" role="region" aria-label="Ton personnage">
+          <img class="portrait-img" id="persoPortraitImg" alt="">
+          <div>
+            <div class="portrait-lbl">Ton personnage</div>
+            <div class="portrait-name" id="persoPortraitName"></div>
+          </div>
+        </div>
+
+        <!-- Inventaire — prend l'espace restant pour rester lisible même vide -->
         <div class="inventory" role="region" aria-label="Inventaire">
           <div class="inv-label">Inventaire</div>
           <div class="inv-items" id="invItems" aria-live="polite">
             <span class="inv-empty">Inventaire vide — gagne des combats pour looter !</span>
           </div>
-        </div>
-
-        <!-- Collection (tableau des victoires) -->
-        <div class="coll" id="collSection" role="region" aria-label="Collection de badges">
-          <div class="coll-title">Tableau des victoires</div>
-          <div class="coll-sub" id="collSub"></div>
-          <div class="badges-grid" id="collGrid"></div>
         </div>
 
         <button class="btn-ghost sidebar-restart" onclick="confirmRestart()">↺ Recommencer une partie</button>
@@ -124,7 +135,7 @@
 
       <!-- Colonne 1/3 — roue centrale + bouton tourner -->
       <main class="arena-main">
-        <div class="arena">
+        <div class="arena" id="arenaBox">
 
           <div class="arena-step-label" id="arenaStepLabel">
             Tourne les roues pour révéler ton destin
@@ -148,40 +159,24 @@
         </div>
       </main>
 
-      <!-- Colonne 1/3 — récapitulatif du tour (toujours visible) -->
-      <aside class="sidebar-right" id="destinyPanel" role="region" aria-label="Résultat du round" aria-live="polite">
+      <!-- Colonne 1/3 — collection de badges (le récapitulatif du tour est une popup, voir #recapOv) -->
+      <aside class="sidebar-right" id="destinyPanel" role="region" aria-label="Collection de badges">
 
-        <!-- État vide : affiché tant qu'aucun round n'est terminé -->
-        <div class="recap-empty" id="recapEmpty">
-          <span class="recap-empty-icon" aria-hidden="true">🎴</span>
-          <div class="recap-empty-text">Le récapitulatif de ton tour apparaîtra ici une fois le combat terminé.</div>
+        <!-- Portrait de l'adversaire du round (masqué tant qu'aucun antagoniste n'est tiré,
+             ou tant qu'aucune image n'est disponible pour lui) -->
+        <div class="portrait-box" id="antagPortraitBox" style="display:none" role="region" aria-label="Adversaire">
+          <img class="portrait-img" id="antagPortraitImg" alt="">
+          <div>
+            <div class="portrait-lbl">Adversaire</div>
+            <div class="portrait-name" id="antagPortraitName"></div>
+          </div>
         </div>
 
-        <!-- Contenu rempli après un round -->
-        <div class="recap-content" id="recapContent" style="display:none">
-          <div class="d-title">✦ Ton aventure ninja ✦</div>
-
-          <div class="d-grid" id="dGrid"></div>
-          <div class="d-story" id="dStory"></div>
-
-          <!-- Loot obtenu -->
-          <div class="loot-panel" id="lootPanel" style="display:none">
-            <div class="loot-panel-title">⚡ Butin de guerre ⚡</div>
-            <span class="loot-item-big" id="lootItemIcon"></span>
-            <span class="loot-item-name" id="lootItemName"></span>
-            <div class="loot-item-type" id="lootItemType"></div>
-            <div class="d-sub" style="margin-top:6px" id="lootItemDesc"></div>
-          </div>
-
-          <!-- Badge antagoniste -->
-          <div class="badge-rev-section" id="badgeSection" style="display:none">
-            <div class="badge-rev-title">⚔ Ennemi vaincu — Badge obtenu ⚔</div>
-            <div class="badge-wrap badge-appear" id="badgeSvgWrap"></div>
-            <div class="badge-rev-name" id="badgeNm"></div>
-            <div class="badge-rev-sub" id="badgeSb"></div>
-          </div>
-
-          <button class="btn-next-round" onclick="nextRound()">⚡ Round suivant</button>
+        <!-- Collection (tableau des victoires) -->
+        <div class="coll" id="collSection" role="region" aria-label="Collection de badges">
+          <div class="coll-title">Tableau des victoires</div>
+          <div class="coll-sub" id="collSub"></div>
+          <div class="badges-grid" id="collGrid"></div>
         </div>
 
       </aside>
@@ -232,24 +227,105 @@
 <div class="overlay overlay-bg-over" id="goOv" role="dialog" aria-modal="true" aria-labelledby="goTitle">
   <div class="ov-box ov-border-red">
     <span class="gameover-skull" aria-hidden="true">💀</span>
-    <div class="ov-title red" id="goTitle">Tu as succombé</div>
+    <div class="ov-title red" id="goTitle">Ton chemin de ninja s'arrête ici</div>
     <div class="ov-sub">
-      Tombé à <strong id="goVillage"></strong> face à <strong id="goAntag"></strong>.<br>
-      <span id="goBadges"></span> badges collectés.
+      Ton nom rejoindra la pierre commémorative après ta chute face à <strong id="goAntag"></strong> à <strong id="goVillage"></strong>.<br>
+      <span id="goBadges"></span> badges recueillis avant la fin.
     </div>
     <button class="btn-next-round" style="margin-top:24px" onclick="closeGameOver()">Recommencer</button>
   </div>
 </div>
 
+<!-- Récapitulatif de round -->
+<div class="overlay overlay-bg-dark" id="recapOv" role="dialog" aria-modal="true" aria-labelledby="recapTitle">
+  <div class="ov-box wide recap-box" id="recapBox">
+    <div class="d-title" id="recapTitle">✦ Ton aventure ninja ✦</div>
+
+    <div class="d-grid" id="dGrid"></div>
+    <div class="d-story" id="dStory"></div>
+
+    <!-- Loot obtenu -->
+    <div class="loot-panel" id="lootPanel" style="display:none">
+      <div class="loot-panel-title">⚡ Butin de guerre ⚡</div>
+      <span class="loot-item-big" id="lootItemIcon"></span>
+      <span class="loot-item-name" id="lootItemName"></span>
+      <div class="loot-item-type" id="lootItemType"></div>
+      <div class="d-sub" style="margin-top:6px" id="lootItemDesc"></div>
+    </div>
+
+    <!-- Badge antagoniste -->
+    <div class="badge-rev-section" id="badgeSection" style="display:none">
+      <div class="badge-rev-title">⚔ Ennemi vaincu — Badge obtenu ⚔</div>
+      <div class="badge-wrap badge-appear" id="badgeSvgWrap"></div>
+      <div class="badge-rev-name" id="badgeNm"></div>
+      <div class="badge-rev-sub" id="badgeSb"></div>
+    </div>
+
+    <button class="btn-next-round" onclick="nextRound()">⚡ Round suivant</button>
+  </div>
+</div>
+
+<!-- Historique de combats contre un antagoniste (déclenché en cliquant un badge) -->
+<div class="overlay overlay-bg-dark" id="antagHistOv" role="dialog" aria-modal="true" aria-labelledby="antagHistName">
+  <div class="ov-box antag-hist-box">
+    <img class="antag-hist-img" id="antagHistImg" alt="">
+    <div class="ov-title" id="antagHistName"></div>
+    <div class="ov-lbl">Historique des combats</div>
+    <div class="antag-hist-stats">
+      <div class="ahs-tile ahs-win">
+        <div class="ahs-val" id="antagHistWin">0</div>
+        <div class="ahs-lbl">Victoires</div>
+      </div>
+      <div class="ahs-tile ahs-draw">
+        <div class="ahs-val" id="antagHistDraw">0</div>
+        <div class="ahs-lbl">Nuls</div>
+      </div>
+      <div class="ahs-tile ahs-loss">
+        <div class="ahs-val" id="antagHistLoss">0</div>
+        <div class="ahs-lbl">Défaites</div>
+      </div>
+    </div>
+    <button class="btn-next-round" onclick="closeAntagHistory()">Fermer</button>
+  </div>
+</div>
+
+<!-- Tutoriel objet à activation manuelle obligatoire (affiché une seule fois par partie) -->
+<div class="overlay overlay-bg-dark" id="manualUseOv" role="dialog" aria-modal="true" aria-labelledby="muTitle">
+  <div class="ov-box manual-use-box">
+    <span class="mu-ninja" aria-hidden="true">🥷</span>
+    <div class="ov-title gold" id="muTitle">Un objet à activer toi-même !</div>
+    <span class="loot-item-big" id="muIcon"></span>
+    <div class="loot-item-name" id="muName"></div>
+    <div class="ov-sub">
+      Ce type d'objet ne fait <strong>rien tout seul</strong>. Le symbole 🥷 sur son icône,
+      dans l'inventaire, te rappelle qu'il faut l'ouvrir et l'activer toi-même avant le
+      combat ou l'examen concerné — sinon il reste inerte et se perd.
+    </div>
+    <button class="btn-next-round" onclick="closeManualUseTutorial()">Compris !</button>
+  </div>
+</div>
+
 <!-- ── SCRIPTS — ordre d'exécution important ── -->
+<!-- Données statiques — aucune dépendance -->
 <script src="js/data.js"></script>
+<!-- Moteur de jeu (état, règles) — dépend de data.js -->
 <script src="js/engine.js"></script>
+<!-- Moteur de dessin des roues — dépend de data.js -->
 <script src="js/wheel.js"></script>
-<script src="js/ui.js"></script>
+<!-- UI — dépend de data.js, engine.js, wheel.js -->
+<script src="js/ui/ui-core.js"></script>
+<script src="js/ui/ui-svg.js"></script>
+<script src="js/ui/ui-hud.js"></script>
+<script src="js/ui/ui-village.js"></script>
+<script src="js/ui/ui-inventory.js"></script>
+<script src="js/ui/ui-round.js"></script>
+<script src="js/ui/ui-recap.js"></script>
+<script src="js/ui/ui-overlays.js"></script>
 <script>
   // Petit helper global pour la confirmation de restart depuis le jeu
   function confirmRestart() {
     if (confirm("Recommencer une nouvelle partie ? Ta progression sera perdue.")) {
+      document.body.classList.remove('in-game');
       Engine.fullReset();
       resetVillageSelection();
       buildVillageScreen();

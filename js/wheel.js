@@ -1,20 +1,52 @@
-/* ============================================================
-   NARUTO DESTINY WHEEL — wheel.js
-   Moteur de dessin et d'animation des roues canvas.
-   SÉCURITÉ : ne manipule que des données constantes de DATA.
-              Aucune valeur utilisateur dans les canvas.
-   ============================================================ */
+/**
+ * @file wheel.js
+ * @module wheel
+ * @description Moteur de dessin Canvas et d'animation des roues du destin. Fournit un
+ *              dessin générique (draw) et des variantes spécialisées par type de roue
+ *              (Issue, Loot, générique) qui préparent items/couleurs/poids puis délèguent
+ *              à draw()/spin(). Ne connaît rien de l'état du jeu — reçoit toutes ses
+ *              données en paramètres depuis ui-round.js.
+ *
+ * @dependencies
+ *   - data.js → WHEEL_PALETTES, LOOT_WHEEL_COLORS, RARITY_WEIGHTS (via getLootWheelData)
+ *
+ * @exports (objet WheelEngine)
+ *   - draw, drawGeneric, spinGeneric, spinIssue, drawLoot, spinLoot, SZ
+ *
+ * @sideEffects
+ *   - Manipule directement le DOM : lit le canvas via document.getElementById(canvasId)
+ *     et dessine dedans avec l'API Canvas 2D. Les fonctions spin*() enchaînent des
+ *     requestAnimationFrame jusqu'à résolution de la Promise retournée.
+ *
+ * SÉCURITÉ : ne manipule que des données constantes de DATA.
+ *            Aucune valeur utilisateur dans les canvas.
+ */
 
 const WheelEngine = (() => {
   const SZ = 640; // taille logique canvas (px) — alignée sur la nouvelle taille d'affichage (voir .stack-wrap)
   const PS = SZ / 380; // facteur d'échelle par rapport à la taille de référence d'origine (380px),
                        // utilisé pour agrandir proportionnellement le pointeur, les traits et les polices.
 
-  // ── Dessin d'une roue ────────────────────────────────────────
-  // weights (optionnel) : tableau parallèle à items donnant le poids relatif
-  // de chaque segment. Si fourni, la part angulaire de chaque segment est
-  // proportionnelle à son poids (roue "honnête" — la surface reflète la
-  // vraie probabilité). Sans weights, tous les segments sont égaux.
+  /**
+   * @description Dessine une roue complète sur un canvas : segments (répartis
+   *              proportionnellement aux poids si fournis, sinon à parts égales),
+   *              libellés adaptés à l'angle du segment, anneau extérieur, et pointeur
+   *              fixe en haut. Fonction bas niveau utilisée par toutes les variantes
+   *              drawLoot/drawGeneric et par les animations spin*().
+   *
+   * @param {string}   canvasId - id de l'élément <canvas> cible dans le DOM
+   * @param {string[]} items    - Libellés affichés dans chaque segment
+   * @param {string[]} colors   - Couleurs hex des segments (recyclées si plus courtes que items)
+   * @param {number}   rotation - Angle de rotation courant de la roue, en radians
+   * @param {number[]} [weights] - Poids relatif de chaque segment (même longueur que
+   *                              items). Si omis, tous les segments ont la même taille.
+   *
+   * @returns {undefined} Ne retourne rien — dessine directement sur le canvas.
+   *
+   * @sideEffects
+   *   Efface et redessine le contenu du canvas #`canvasId`. Ne fait rien si le canvas
+   *   est introuvable ou si `items` est vide.
+   */
   function draw(canvasId, items, colors, rotation, weights) {
     const cv = document.getElementById(canvasId);
     if (!cv) return;
@@ -133,10 +165,19 @@ const WheelEngine = (() => {
     ctx.restore();
   }
 
-  // Angle de rotation nécessaire pour que le pointeur (fixe, en haut, -π/2)
-  // tombe pile au milieu du segment targetIndex, compte tenu des poids
-  // (segments non uniformes → même logique que draw() pour rester cohérent
-  // entre ce qui est dessiné et ce qui est réellement tiré).
+  /**
+   * @description Calcule l'angle de rotation nécessaire pour que le pointeur fixe
+   *              (en haut, -π/2) tombe pile au milieu du segment `targetIndex`, compte
+   *              tenu des poids relatifs des segments — la même logique de répartition
+   *              angulaire que draw(), pour garantir que la roue affichée coïncide avec
+   *              le résultat réellement tiré.
+   *
+   * @param {number[]} weights     - Poids relatif de chaque segment
+   * @param {number}   targetIndex - Index du segment visé
+   *
+   * @returns {number} Angle de base en radians (sans les tours supplémentaires
+   *                   d'animation, ajoutés séparément par les fonctions spin*())
+   */
   function _targetBaseAngle(weights, targetIndex) {
     const total = weights.reduce((s, x) => s + x, 0) || 1;
     let cum = 0;
@@ -145,8 +186,26 @@ const WheelEngine = (() => {
     return -Math.PI / 2 - (cum + arcSize / 2);
   }
 
-  // ── Animation de spin ────────────────────────────────────────
-  // Retourne une Promise qui résout avec l'index de l'item sélectionné
+  /**
+   * @description Anime le spin d'une roue à segments égaux (utilisée pour les roues
+   *              "générique" : personnage, antagoniste) : tire un index cible aléatoire,
+   *              calcule une rotation finale (angle cible + 6 à 10 tours complets), puis
+   *              anime la rotation sur 3200-4600ms avec un easing "ease-out" quartique,
+   *              en redessinant la roue à chaque frame.
+   *
+   * @param {Object}   params
+   * @param {string}   params.canvasId      - id du canvas cible
+   * @param {string[]} params.items         - Libellés des segments (tous de poids égal)
+   * @param {string[]} params.colors        - Couleurs des segments
+   * @param {number}   params.startRotation - Angle de départ de l'animation, en radians
+   * @param {function} [params.onFrame]     - Callback appelé à chaque frame avec l'angle courant
+   *
+   * @returns {Promise<Object>} Résout avec `{ targetIndex, finalRotation }` une fois
+   *                            l'animation terminée
+   *
+   * @sideEffects
+   *   Enchaîne des requestAnimationFrame qui redessinent le canvas #`canvasId`
+   */
   function spin({ canvasId, items, colors, startRotation, onFrame }) {
     return new Promise(resolve => {
       const n = items.length;
@@ -179,6 +238,15 @@ const WheelEngine = (() => {
     });
   }
 
+  /**
+   * @description Tire un index aléatoire parmi une liste d'objets pondérés, selon leur
+   *              champ `weight` (probabilité proportionnelle au poids).
+   *
+   * @param {Array<{weight: number}>} items - Objets avec un champ numérique `weight`
+   *
+   * @returns {number} Index tiré dans `items` (toujours valide même en cas d'arrondi
+   *                   flottant — repli sur le dernier index)
+   */
   function _weightedRandomFromWeights(items) {
     const total = items.reduce((s, it) => s + it.weight, 0);
     let r = Math.random() * total;
@@ -189,19 +257,25 @@ const WheelEngine = (() => {
     return items.length - 1;
   }
 
-  // ── Roue Issue (3 segments, poids dynamiques) ────────────────
-  // weights = tableau retourné par Engine.computeIssueWeights()
-  // La roue est dessinée à parts égales tant qu'aucun poids concret n'est
-  // encore connu (état initial avant le calcul des probabilités du combat).
-  function drawIssue(canvasId, rotation) {
-    const items  = OUTCOMES.map(o => o.short);
-    const colors = OUTCOMES.map(o => o.wheelColor);
-    draw(canvasId, items, colors, rotation);
-  }
-
-  // weights : [{ short, wheelColor, weight, ... }, ...] depuis Engine.computeIssueWeights()
-  // Les parts de la roue sont proportionnelles aux poids réels : une issue
-  // à 60% occupe 60% du cercle.
+  /**
+   * @description Anime le spin de la roue de combat ("Issue"), avec des parts
+   *              proportionnelles aux poids réels fournis par Engine.computeIssueWeights()
+   *              — une issue à 60% de chance occupe 60% du cercle. Même fonction
+   *              utilisée pour la roue d'examen (ui-round.js lui passe les poids
+   *              d'EXAMEN_OUTCOMES via Engine.computeExamenWeights()).
+   *
+   * @param {Object}   params
+   * @param {string}   params.canvasId      - id du canvas cible
+   * @param {number}   params.startRotation - Angle de départ, en radians
+   * @param {Object[]} params.weights       - Résultats pondérés (`{short, wheelColor, weight}`)
+   *                                          depuis Engine.computeIssueWeights()/computeExamenWeights()
+   * @param {function} [params.onFrame]     - Callback appelé à chaque frame avec l'angle courant
+   *
+   * @returns {Promise<Object>} Résout avec `{ targetIndex, finalRotation }`
+   *
+   * @sideEffects
+   *   Enchaîne des requestAnimationFrame qui redessinent le canvas #`canvasId`
+   */
   function spinIssue({ canvasId, startRotation, weights, onFrame }) {
     const items  = weights.map(o => o.short);
     const colors = weights.map(o => o.wheelColor);
@@ -230,10 +304,19 @@ const WheelEngine = (() => {
     });
   }
 
-  // ── Roue Loot ────────────────────────────────────────────────
-  // Sélection pondérée par rareté + couleur par type ; les parts dessinées
-  // suivent aussi ces poids (les objets rares occupent visiblement moins
-  // de place que les communs).
+  /**
+   * @description Prépare les données d'affichage de la roue "Butin" à partir d'un pool
+   *              d'objets : libellé, couleur (choisie aléatoirement parmi les 3 teintes
+   *              du type dans LOOT_WHEEL_COLORS, repli gris si type inconnu), et poids
+   *              selon la rareté (RARITY_WEIGHTS) — les objets rares occupent donc
+   *              visiblement moins de place sur la roue que les communs.
+   *
+   * @param {Object[]} pool - Sous-ensemble de LOOT_POOL déjà filtré (voir
+   *                          Engine.buildLootPool())
+   *
+   * @returns {Object[]} Un objet `{ label, color, weight }` par item du pool, dans le
+   *                     même ordre
+   */
   function getLootWheelData(pool) {
     // pool = sous-ensemble du LOOT_POOL déjà filtré
     return pool.map(item => ({
@@ -245,12 +328,41 @@ const WheelEngine = (() => {
     }));
   }
 
+  /**
+   * @description Dessine la roue "Butin" pour un pool d'objets donné.
+   *
+   * @param {string}   canvasId - id du canvas cible
+   * @param {Object[]} pool     - Sous-ensemble de LOOT_POOL à afficher
+   * @param {number}   rotation - Angle de rotation à dessiner, en radians
+   *
+   * @returns {Object[]} Les données de roue calculées par getLootWheelData(pool)
+   *                     (utile à l'appelant pour réutiliser les couleurs tirées)
+   *
+   * @sideEffects
+   *   Redessine le canvas #`canvasId`
+   */
   function drawLoot(canvasId, pool, rotation) {
     const data = getLootWheelData(pool);
     draw(canvasId, data.map(d => d.label), data.map(d => d.color), rotation, data.map(d => d.weight));
     return data;
   }
 
+  /**
+   * @description Anime le spin de la roue "Butin" : tire un objet pondéré par rareté
+   *              et anime la rotation jusqu'à ce segment.
+   *
+   * @param {Object}   params
+   * @param {string}   params.canvasId      - id du canvas cible
+   * @param {Object[]} params.pool          - Sous-ensemble de LOOT_POOL à faire tourner
+   * @param {number}   params.startRotation - Angle de départ, en radians
+   * @param {function} [params.onFrame]     - Callback appelé à chaque frame avec l'angle courant
+   *
+   * @returns {Promise<Object>} Résout avec `{ targetIndex, finalRotation, lootItem }`
+   *                            où `lootItem` est l'entrée de `pool` tirée
+   *
+   * @sideEffects
+   *   Enchaîne des requestAnimationFrame qui redessinent le canvas #`canvasId`
+   */
   function spinLoot({ canvasId, pool, startRotation, onFrame }) {
     const data = getLootWheelData(pool);
     const items  = data.map(d => d.label);
@@ -280,19 +392,47 @@ const WheelEngine = (() => {
     });
   }
 
-  // ── Roue générique (village, perso, antagoniste) ─────────────
-  // Segments égaux : chaque candidat a la même probabilité, donc la même part.
+  /**
+   * @description Dessine une roue à segments égaux (personnage ou antagoniste) : chaque
+   *              candidat a la même probabilité, donc la même part angulaire. La palette
+   *              de couleurs est choisie dans WHEEL_PALETTES via `paletteIdx`.
+   *
+   * @param {string}   canvasId   - id du canvas cible
+   * @param {string[]} items      - Libellés des segments
+   * @param {number}   paletteIdx - Index dans WHEEL_PALETTES (repli sur la première
+   *                                palette si hors limites)
+   * @param {number}   rotation   - Angle de rotation à dessiner, en radians
+   *
+   * @sideEffects
+   *   Redessine le canvas #`canvasId`
+   */
   function drawGeneric(canvasId, items, paletteIdx, rotation) {
     const pal = WHEEL_PALETTES[paletteIdx] || WHEEL_PALETTES[0];
     const colors = items.map((_, i) => pal[i % pal.length]);
     draw(canvasId, items, colors, rotation);
   }
 
+  /**
+   * @description Anime le spin d'une roue à segments égaux (personnage ou antagoniste) —
+   *              délègue à spin() après avoir résolu la palette de couleurs.
+   *
+   * @param {Object}   params
+   * @param {string}   params.canvasId      - id du canvas cible
+   * @param {string[]} params.items         - Libellés des segments
+   * @param {number}   params.paletteIdx    - Index dans WHEEL_PALETTES
+   * @param {number}   params.startRotation - Angle de départ, en radians
+   * @param {function} [params.onFrame]     - Callback appelé à chaque frame avec l'angle courant
+   *
+   * @returns {Promise<Object>} Résout avec `{ targetIndex, finalRotation }`
+   *
+   * @sideEffects
+   *   Enchaîne des requestAnimationFrame qui redessinent le canvas #`canvasId`
+   */
   function spinGeneric({ canvasId, items, paletteIdx, startRotation, onFrame }) {
     const pal = WHEEL_PALETTES[paletteIdx] || WHEEL_PALETTES[0];
     const colors = items.map((_, i) => pal[i % pal.length]);
     return spin({ canvasId, items, colors, startRotation, onFrame });
   }
 
-  return { draw, drawGeneric, spinGeneric, drawIssue, spinIssue, drawLoot, spinLoot, SZ };
+  return { draw, drawGeneric, spinGeneric, spinIssue, drawLoot, spinLoot, SZ };
 })();
