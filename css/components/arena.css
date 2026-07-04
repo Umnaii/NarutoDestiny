@@ -1,0 +1,144 @@
+/* ============================================================
+   NARUTO DESTINY WHEEL — components/arena.css
+   Empilement des roues (arena), contrôles de spin, boutons, flash de défaite.
+   Extrait de style.css lors du refactoring Phase 1.
+   ============================================================ */
+
+/* ── STACK ARENA ── */
+.arena { display: flex; flex-direction: column; align-items: center; gap: 0; margin-bottom: 14px; }
+
+.arena-step-label {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 11px; letter-spacing: .22em;
+  color: var(--orange); text-transform: uppercase;
+  text-align: center; margin-bottom: 20px;
+}
+
+.stack-wrap {
+  position: relative;
+  width: min(min(100% - 32px, 640px), calc(100dvh - 180px));
+  aspect-ratio: 1 / 1;
+  margin: 0 auto 20px;
+}
+
+.wheel-layer {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  /* État par défaut : hors champ en bas, invisible */
+  opacity: 0;
+  transform: translateY(80px) scale(.88);
+  transition: opacity .45s cubic-bezier(.4,0,.2,1),
+              transform .5s cubic-bezier(.34,1.2,.64,1);
+  pointer-events: none;
+}
+/* Roue active — entre par le bas */
+.wheel-layer.vis  {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+/* Roue terminée — sort par le haut, invisible */
+.wheel-layer.done {
+  opacity: 0;
+  transform: translateY(-80px) scale(.88);
+  pointer-events: none;
+  transition: opacity .35s cubic-bezier(.4,0,.2,1),
+              transform .4s cubic-bezier(.4,0,.2,1);
+}
+
+.wheel-dot {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--dark); border: 3px solid var(--orange);
+  box-shadow: 0 0 10px rgba(232,82,26,.5);
+  z-index: 15; pointer-events: none;
+}
+
+/* ── CONTROLS ── */
+.ctrl {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 10px; width: min(640px, 92%);
+}
+
+.step-res {
+  width: 100%; background: var(--dark3);
+  border-radius: 10px; border: 1px solid rgba(255,255,255,.07);
+  padding: 10px 16px; text-align: center;
+  min-height: 44px; display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity .4s;
+}
+.step-res.show { opacity: 1; }
+.sr-lbl {
+  font-size: 10px; color: var(--text-muted);
+  letter-spacing: .15em; font-family: 'Cinzel Decorative', serif;
+  display: block; margin-bottom: 2px;
+}
+.sr-val { font-size: 17px; font-weight: 700; color: var(--gold-light); }
+.sr-val.defeat { color: var(--red); }
+.sr-val.loot   { color: var(--green); }
+
+/* ── BUTTONS ── */
+.btn-spin {
+  width: 100%; padding: 13px 20px; border: none; border-radius: 11px;
+  background: linear-gradient(135deg, var(--orange-dark), var(--orange));
+  color: #fff; font-family: 'Rajdhani', sans-serif;
+  font-size: 16px; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; cursor: pointer; transition: all .2s;
+}
+.btn-spin:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--orange), var(--orange-light));
+  transform: translateY(-1px); box-shadow: 0 6px 20px rgba(232,82,26,.4);
+}
+.btn-spin:active:not(:disabled) { transform: scale(.98); }
+.btn-spin:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+.btn-spin.going { background: linear-gradient(135deg, #2a2a2a, #333); }
+
+.btn-all {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 14px 40px; border: none; border-radius: 12px;
+  background: linear-gradient(135deg, var(--orange-dark), var(--orange), var(--orange-light));
+  color: #fff; font-family: 'Cinzel Decorative', serif;
+  font-size: 14px; font-weight: 700; cursor: pointer;
+  transition: all .25s; box-shadow: 0 8px 26px rgba(232,82,26,.35);
+  position: relative; overflow: hidden;
+}
+.btn-all::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(135deg, transparent 30%, rgba(255,255,255,.14) 50%, transparent 70%);
+  transform: translateX(-100%); transition: transform .5s;
+}
+.btn-all:hover::before { transform: translateX(100%); }
+.btn-all:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 12px 34px rgba(232,82,26,.48); }
+.btn-all:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+
+.btn-next-round {
+  display: block; margin: 20px auto 0;
+  padding: 13px 40px; border: none; border-radius: 11px;
+  background: linear-gradient(135deg, var(--orange-dark), var(--orange));
+  color: #fff; font-family: 'Cinzel Decorative', serif;
+  font-size: 13px; cursor: pointer; transition: all .2s;
+  box-shadow: 0 6px 20px rgba(232,82,26,.3);
+}
+.btn-next-round:hover { transform: translateY(-1px); box-shadow: 0 10px 28px rgba(232,82,26,.45); }
+
+.btn-ghost {
+  display: block; margin: 0 auto;
+  padding: 10px 28px; border: 1px solid var(--border);
+  border-radius: 10px; background: transparent;
+  color: var(--text-muted); font-family: 'Rajdhani', sans-serif;
+  font-size: 14px; font-weight: 600; letter-spacing: .1em;
+  text-transform: uppercase; cursor: pointer; transition: all .2s;
+}
+.btn-ghost:hover { border-color: var(--orange); color: var(--orange); background: rgba(232,82,26,.06); }
+.btn-ghost.sidebar-restart { margin-top: auto; flex-shrink: 0; }
+
+.all-wrap { text-align: center; margin-top: 20px; }
+
+/* ── DEFEAT FLASH ── */
+@keyframes defeatFlash {
+  0%,100%{ background:var(--dark); }
+  20%,60%{ background:rgba(180,20,20,.18); }
+  40%,80%{ background:var(--dark); }
+}
+.defeat-flash { animation: defeatFlash .8s ease; }

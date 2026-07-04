@@ -1,0 +1,76 @@
+/* ============================================================
+   NARUTO DESTINY WHEEL — components/recap.css
+   Récapitulatif du round (colonne droite) + tableau de collection de badges.
+   Extrait de style.css lors du refactoring Phase 1.
+   ============================================================ */
+
+.d-title {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 11px; letter-spacing: .28em;
+  color: var(--gold); text-transform: uppercase;
+  text-align: center; margin-bottom: 20px;
+}
+
+.d-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px; margin-bottom: 18px;
+}
+
+.d-item {
+  background: var(--dark3); border-radius: 10px;
+  padding: 12px 14px; border: 1px solid rgba(255,255,255,.06);
+}
+.d-lbl {
+  font-size: 9px; color: var(--orange);
+  letter-spacing: .2em; text-transform: uppercase;
+  font-weight: 700; margin-bottom: 4px;
+  font-family: 'Cinzel Decorative', serif;
+}
+.d-val { font-size: 17px; font-weight: 700; color: var(--gold-light); line-height: 1.2; }
+.d-val.defeat { color: var(--red); }
+.d-sub { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+
+.d-story {
+  padding: 14px 18px;
+  background: linear-gradient(135deg, rgba(232,82,26,.08), rgba(212,175,55,.05));
+  border-radius: 10px; border: 1px solid rgba(232,82,26,.14);
+  font-size: 15px; line-height: 1.7; color: var(--text);
+  font-weight: 500; margin-bottom: 18px;
+}
+
+/* ── COLLECTION ──
+   Positionnée en haut de la sidebar droite, au-dessus du récapitulatif. */
+.coll {
+  display: none;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 20px 22px;
+  margin-bottom: 20px;
+  flex-shrink: 0;
+}
+.coll.show { display: block; }
+.coll-title {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 12px; letter-spacing: .24em;
+  color: var(--orange); text-transform: uppercase;
+  text-align: center; margin-bottom: 5px;
+}
+.coll-sub { text-align: center; font-size: 14px; color: var(--text-muted); margin-bottom: 20px; }
+.badges-grid { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; }
+.bslot {
+  width: 96px; text-align: center; animation: slin .5s cubic-bezier(.34,1.26,.64,1) both;
+  cursor: pointer; border-radius: 10px; padding: 4px; transition: background .2s;
+}
+.bslot:hover, .bslot:focus-visible { background: rgba(255,255,255,.06); outline: none; }
+@keyframes slin {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.bslot-nm { font-size: 11px; color: var(--text-muted); margin-top: 7px; font-weight: 600; line-height: 1.3; }
+.bslot-out { font-size: 11px; margin-top: 2px; font-weight: 700; }
+.out-v { color: var(--green); }
+.out-h { color: var(--gold); }
+.out-d { color: var(--blue); }
+.out-x { color: var(--red); }

@@ -1,0 +1,63 @@
+/* ============================================================
+   NARUTO DESTINY WHEEL — components/hud.css
+   HUD vies + rang (sidebar gauche, en haut).
+   Extrait de style.css lors du refactoring Phase 1.
+   ============================================================ */
+
+/* ── HUD (lives + rank) ── */
+.hud {
+  display: flex; flex-direction: column; align-items: stretch;
+  gap: 18px;
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 18px; padding: 22px 24px;
+}
+
+.hud-lives { display: flex; align-items: center; gap: 14px; }
+.lives-label {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 12px; letter-spacing: .2em; color: var(--text-muted);
+  text-transform: uppercase;
+}
+.lives-hearts { display: flex; gap: 8px; }
+.heart {
+  width: 34px; height: 34px;
+  transition: transform .3s, opacity .3s;
+}
+.heart.lost { opacity: .18; transform: scale(.85); }
+
+.hud-rank { display: flex; align-items: center; gap: 16px; }
+.rank-emblem-wrap { flex-shrink: 0; }
+.rank-emblem-wrap svg { width: 64px; height: 64px; }
+.rank-text { flex: 1; }
+.rank-name-lbl {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 19px; font-weight: 700; line-height: 1;
+  margin-bottom: 9px;
+}
+.rank-track { height: 11px; background: var(--dark3); border-radius: 99px; overflow: hidden; }
+.rank-fill { height: 100%; border-radius: 99px; width: 0%; transition: width .85s cubic-bezier(.4,0,.2,1); }
+.rank-caption { font-size: 14px; color: var(--text-muted); margin-top: 8px; }
+.rank-caption strong { color: var(--text); }
+
+/* ── PORTRAIT (personnage joué / adversaire du round) ──
+   Boîte partagée entre la sidebar gauche (personnage) et la sidebar droite
+   (adversaire) — voir ui-hud.js → updatePersoPortrait() et ui-recap.js →
+   updateAntagPortrait(). */
+.portrait-box {
+  display: flex; align-items: center; gap: 14px;
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 18px; padding: 14px 18px;
+  flex-shrink: 0;
+}
+.portrait-img {
+  width: 60px; height: 60px; border-radius: 12px;
+  object-fit: cover; object-position: top center;
+  border: 1px solid var(--border-gold);
+  flex-shrink: 0;
+}
+.portrait-lbl {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 10px; letter-spacing: .2em; color: var(--text-muted);
+  text-transform: uppercase; margin-bottom: 4px;
+}
+.portrait-name { font-size: 15px; font-weight: 700; color: var(--gold-light); }
