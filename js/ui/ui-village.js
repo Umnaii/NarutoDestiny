@@ -6,11 +6,13 @@
  *
  * @dependencies
  *   - ../data.js   → VILLAGES
- *   - ../engine.js → Engine.setVillage(), Engine.newRound()
+ *   - ../engine.js → Engine.setVillage(), Engine.newRound(), Engine.saveGame(),
+ *                    Engine.hasSaveGame(), Engine.loadGame()
  *   - ui-core.js   → $(), showScreen()
- *   - ui-round.js  → buildRound()
+ *   - ui-round.js  → buildRound(), _stepIdx/_stepRots (variables partagées)
  *   - ui-hud.js    → updateHUD()
  *   - ui-inventory.js → updateInventoryBar()
+ *   - ui-recap.js  → updateCollection()
  *
  * @exports (fonctions globales)
  *   - buildVillageScreen()
@@ -19,6 +21,8 @@
  *   - confirmVillage()
  *   - startGame()
  *   - resetRecapPanel()
+ *   - updateResumeButton()
+ *   - resumeSavedGame()
  */
 
 // ── VILLAGE SELECT ───────────────────────────────────────────
@@ -105,7 +109,8 @@ function confirmVillage() {
  *
  * @sideEffects
  *   Ajoute `.in-game` au body, appelle showScreen(), Engine.newRound(), buildRound(),
- *   updateHUD(), updateInventoryBar(), masque #collSection, appelle resetRecapPanel()
+ *   updateHUD(), updateInventoryBar(), masque #collSection, appelle resetRecapPanel(),
+ *   sauvegarde la partie (Engine.saveGame())
  */
 function startGame() {
   document.body.classList.add('in-game');
@@ -115,6 +120,52 @@ function startGame() {
   updateHUD();
   updateInventoryBar();
   $("collSection").classList.remove("show");
+  resetRecapPanel();
+  Engine.saveGame();
+}
+
+/**
+ * @description Affiche ou masque le bouton "Reprendre la partie en cours" de l'écran de
+ *              village, selon qu'une sauvegarde valide existe (voir Engine.hasSaveGame()).
+ *              Appelée au chargement de la page et à chaque retour à l'écran de village
+ *              en fin de partie (voir ui-overlays.js → closeGameOver(), index.html →
+ *              confirmRestart()).
+ *
+ * @sideEffects
+ *   Modifie l'affichage de #resumeBtn
+ */
+function updateResumeButton() {
+  const btn = $("resumeBtn");
+  if (!btn) return;
+  btn.style.display = Engine.hasSaveGame() ? "block" : "none";
+}
+
+/**
+ * @description Reprend la partie précédemment sauvegardée : recharge l'état global
+ *              (voir Engine.loadGame()) puis affiche l'écran de jeu exactement comme un
+ *              round fraîchement commencé — buildRound() régénère les roues du round en
+ *              cours à partir du village/personnage/inventaire/rang restaurés (il
+ *              rappelle Engine.newRound() en interne, sans effet destructeur puisque ce
+ *              dernier ne fait que réinitialiser G.round à partir des champs persistants
+ *              déjà restaurés). Ne fait rien si aucune sauvegarde valide n'est trouvée —
+ *              le bouton ne devrait alors de toute façon plus être visible (voir
+ *              updateResumeButton()).
+ *
+ * @sideEffects
+ *   Appelle Engine.loadGame() ; si la sauvegarde est valide, ajoute `.in-game` au body,
+ *   affiche l'écran de jeu, réinitialise _stepIdx/_stepRots, appelle buildRound(),
+ *   updateHUD(), updateInventoryBar(), updateCollection(), resetRecapPanel()
+ */
+function resumeSavedGame() {
+  if (!Engine.loadGame()) return;
+  document.body.classList.add('in-game');
+  showScreen("screenGame");
+  _stepIdx  = 0;
+  _stepRots = [0, 0, 0, 0, 0];
+  buildRound(); // reconstruit le round courant depuis l'état restauré
+  updateHUD();
+  updateInventoryBar();
+  updateCollection();
   resetRecapPanel();
 }
 
@@ -131,5 +182,6 @@ function resetRecapPanel() {
 // ── INIT ──────────────────────────────────────────────────────
 window.addEventListener("DOMContentLoaded", () => {
   buildVillageScreen();
+  updateResumeButton();
   showScreen("screenVillage");
 });

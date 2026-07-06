@@ -357,13 +357,13 @@ const WheelEngine = (() => {
    *              du type dans LOOT_WHEEL_COLORS, repli gris si type inconnu), et poids
    *              selon la rareté (RARITY_WEIGHTS) — les objets rares occupent donc
    *              visiblement moins de place sur la roue que les communs. Si un item
-   *              porte un champ `forcedWeight` (voir Engine.buildKageLootPool()), ce
+   *              porte un champ `forcedWeight` (voir Engine.buildLootPool()), ce
    *              poids explicite est utilisé à la place du poids par rareté — utile pour
    *              un objet fictif comme "Rien cette fois" dont la part doit être calculée
    *              précisément plutôt que dérivée d'une rareté.
    *
    * @param {Object[]} pool - Sous-ensemble de LOOT_POOL déjà filtré (voir
-   *                          Engine.buildLootPool()/buildKageLootPool())
+   *                          Engine.buildLootPool())
    *
    * @returns {Object[]} Un objet `{ label, color, weight }` par item du pool, dans le
    *                     même ordre

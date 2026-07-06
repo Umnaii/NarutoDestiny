@@ -95,15 +95,16 @@ function closeAntagHistory() {
  * @description Construit et affiche le récapitulatif complet du round dans une popup
  *              plein écran : grille personnage/antagoniste/combat/butin, récit
  *              narratif, panneau de butin obtenu, badge d'ennemi vaincu (si le combat
- *              n'est pas une défaite), et rafraîchit la collection de badges. Affiché
- *              après la phase loot quand l'examen n'est pas encore disponible, ou en fin
- *              de round complet. Fermée par le bouton "⚡ Round suivant" de la popup,
- *              qui appelle nextRound() (voir ui-round.js).
+ *              n'est pas une défaite). L'historique des combats (collection de badges)
+ *              n'est pas rafraîchi ici : il l'est déjà, instantanément, dès la fin du
+ *              combat (voir ui-round.js → applyIssue()), avant même ce récapitulatif.
+ *              Affiché après la phase loot quand l'examen n'est pas encore disponible,
+ *              ou en fin de round complet. Fermée par le bouton "⚡ Round suivant" de la
+ *              popup, qui appelle nextRound() (voir ui-round.js).
  *
  * @sideEffects
  *   Affiche l'overlay #recapOv, modifie #dGrid, #dStory, #lootPanel (+ enfants),
- *   #badgeSection (+ enfants) ; remet le scroll de #recapBox en haut ;
- *   appelle updateCollection()
+ *   #badgeSection (+ enfants) ; remet le scroll de #recapBox en haut
  */
 function showRoundSummary() {
   const G = Engine.getState();
@@ -161,7 +162,6 @@ function showRoundSummary() {
   } else { badgeSection.style.display = "none"; }
 
   box.scrollTop = 0;
-  updateCollection();
 }
 
 // ── ANALYSE EXAMEN ────────────────────────────────────────────

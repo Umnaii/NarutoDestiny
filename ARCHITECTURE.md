@@ -1,7 +1,7 @@
 # ARCHITECTURE.md — Naruto Destiny Wheel
 
 > Dernière mise à jour : 2026-07-06
-> Version architecture : 3.0 (post refonte lore/progression/butin/son)
+> Version architecture : 3.1 (post sauvegarde/reprise, historique instantané, équilibrage butin)
 
 ---
 
@@ -14,15 +14,21 @@ pouvoir tenter un examen de passage de rang (Genin → Chûnin → Jônin → Ka
 antagonistes rencontrés dépendent du rang du joueur et, pour Genin/Chûnin, de rivalités
 de village cohérentes avec le lore ; il n'y a plus de tirage aléatoire d'"époque" caché.
 La difficulté de l'examen de rang augmente avec les échecs successifs et grimpe jusqu'à
-100% de réussite garantie après 5 victoires en combat sans avoir décroché l'examen.
-Une fois le rang Kage atteint, la partie ne s'arrête pas : elle bascule dans un mode
-défense sans fin (vagues d'ennemis, butin à 25% de chances par vague) jusqu'au game
-over, et chaque partie terminée (victoire ou défaite) est ajoutée à un classement
-consultable à tout moment. La partie se termine par un game over (0 vie), qu'il survienne
-en cours de progression normale ou en mode défense de Kage. Toute la partie se joue en
-une page, sans rechargement, avec un état 100% en mémoire (RAM) — rien n'est persisté
-entre deux visites, à l'exception du classement de la session courante (voir section 3
-et 4 — `SCOREBOARD` survit à `Engine.fullReset()` mais pas à un rechargement de page).
+100% de réussite garantie après 5 victoires en combat sans avoir décroché l'examen. Un
+match nul est un statu quo pur : il ne fait progresser ni les victoires (G.wins), ni le
+score de vagues repoussées en défense de Kage — seule une victoire nette compte. Le
+butin d'un round est garanti sur victoire nette, mais réduit à 40% de chances sur match
+nul ou défaite survécue (même règle en mode normal et en défense de Kage). Une fois le
+rang Kage atteint, la partie ne s'arrête pas : elle bascule dans un mode défense sans fin
+(vagues d'ennemis) jusqu'au game over, et chaque partie terminée (victoire ou défaite)
+est ajoutée à un classement consultable à tout moment. La partie se termine par un game
+over (0 vie), qu'il survienne en cours de progression normale ou en mode défense de Kage.
+Toute la partie se joue en une page, sans rechargement. L'état de la partie en cours et
+le classement de session sont automatiquement sauvegardés dans localStorage (voir
+section 3 et 4) : fermer l'onglet ou recharger la page ne fait pas perdre la
+progression — un bouton "Reprendre la partie en cours" réapparaît sur l'écran de village
+tant qu'une sauvegarde existe. Aucune autre donnée n'est envoyée où que ce soit ; il n'y
+a ni compte, ni serveur, ni base de données.
 
 **Stack :** HTML5 · CSS3 · Vanilla JavaScript (ES6, modules via `<script>` classiques)
 **Pas de bundler, pas de framework, pas de dépendances npm.**
@@ -120,8 +126,9 @@ js/
    → ui-round.js → spinCurrent()
      → selon l'étape courante : WheelEngine.spinGeneric() (perso/antag),
        WheelEngine.spinIssue() (combat, avec Engine.computeIssueWeights()),
-       WheelEngine.spinLoot() (butin, ou Engine.buildKageLootPool() en mode défense de
-       Kage — 25% de chances réelles de butin, 75% "Rien cette fois"), ou
+       WheelEngine.spinLoot() (butin — voir Engine.buildLootPool(size, guaranteed) :
+       butin garanti sur victoire nette, 40% de chances seulement sur match nul ou
+       défaite survécue, en mode normal comme en défense de Kage), ou
        WheelEngine.spinIssue() de nouveau (examen, avec Engine.computeExamenWeights() —
        la difficulté baisse à chaque victoire en combat et atteint 100% de réussite au
        bout de 5 victoires sans avoir réussi l'examen)
@@ -129,8 +136,11 @@ js/
        pointeur pendant l'animation (voir wheel.js → onTick / ui-audio.js → playTickSound())
      → au résultat : Engine.setResult(), puis selon l'étape :
          - "issue"  → applyIssue() → Engine.applyOutcome() (vies, historique par
-                       antagoniste figé/portrait figé, phase="loot") ; en mode défense de
-                       Kage, comptabilise aussi la vague (Engine.recordKageWave())
+                       antagoniste figé/portrait figé, phase="loot", historique des
+                       combats mis à jour instantanément — voir updateCollection()) ;
+                       seule une victoire nette fait progresser G.wins et, en mode
+                       défense de Kage, le compteur de vagues repoussées
+                       (Engine.recordKageWave()) — un match nul est un statu quo pur
          - "loot"   → Engine.addLoot() (empile les objets consommables déjà possédés au
                        lieu de les dupliquer) ; si !G.examReady → showRoundSummary() (ou
                        enchaîne directement sur la vague suivante en mode défense de Kage)
@@ -149,22 +159,38 @@ js/
 
 5. Fin de round / de partie
    → Round terminé sans promotion → bouton "⚡ Round suivant" (popup) → ui-round.js →
-     nextRound() → reconstruit un nouveau round (retour à l'étape 3)
+     nextRound() → reconstruit un nouveau round (retour à l'étape 3) → sauvegarde la
+     partie (Engine.saveGame(), voir point 7 ci-dessous)
    → Promotion de rang → ui-overlays.js → showPromotion() → closePromo() → showRoundSummary()
    → Rang Kage atteint → ui-overlays.js → showVictory() → closeKage() →
      Engine.enterKageDefense() → le jeu enchaîne directement sur la 1ère vague du mode
-     défense (pas de retour à l'écran village ici)
-   → Mode défense de Kage → chaque vague repoussée incrémente le score de la partie
-     (G.kageDefenseKills) ; continue indéfiniment jusqu'au game over
+     défense (pas de retour à l'écran village ici) → Engine.saveGame()
+   → Mode défense de Kage → chaque vague gagnée nettement incrémente le score de la
+     partie (G.kageDefenseKills — un match nul ne compte pas) ; continue indéfiniment
+     jusqu'au game over ; chaque nouvelle vague resauvegarde la partie
    → Game over (0 vie, en progression normale ou en défense de Kage) → spinCurrent()
      détecte combatResult.gameOver → ui-overlays.js → showGameOver() (texte différent
      selon le mode ; après un délai de 900ms, le temps du flash de défaite) →
      closeGameOver() → Engine.recordRun() (ajoute la partie au classement de session,
-     voir section 4) → Engine.fullReset() → retour à l'écran de sélection de village
+     voir section 4) → Engine.deleteSaveGame() (plus rien à reprendre) →
+     Engine.fullReset() → retour à l'écran de sélection de village
 
 6. Consultation du classement (à tout moment, écran village ou sidebar en jeu)
    → bouton "Classement" → ui-overlays.js → openScoreboard() → Engine.getScoreboard()
      (trié par vagues de défense de Kage repoussées, puis rang, puis badges) → closeScoreboard()
+
+7. Sauvegarde et reprise de partie (voir aussi section 4 — persistance)
+   → À chaque limite "propre" de round (nextRound(), continueKageDefense(), closeKage(),
+     démarrage de partie via startGame()) → Engine.saveGame() → écrit tout `G` dans
+     localStorage. Jamais appelée en cours de spin — impossible de reprendre une partie
+     au milieu d'un tirage en suspens.
+   → Au chargement de la page (ou après un game over/redémarrage manuel) →
+     ui-village.js → updateResumeButton() → affiche ou masque le bouton "Reprendre la
+     partie en cours" selon Engine.hasSaveGame()
+   → Clic sur "Reprendre" → ui-village.js → resumeSavedGame() → Engine.loadGame()
+     (restaure `G`) → buildRound() reconstruit le round courant depuis les champs
+     persistants restaurés (village, perso, inventaire, rang, historique…) exactement
+     comme un round fraîchement commencé
 ```
 
 ---
@@ -179,13 +205,16 @@ ui-core.js     ← aucune dépendance
 ui-audio.js    ← aucune dépendance
 ui-svg.js      ← data.js, ui-core.js
 ui-hud.js      ← data.js, engine.js, ui-core.js, ui-svg.js
-ui-village.js  ← data.js, engine.js, ui-core.js, ui-round.js, ui-hud.js, ui-inventory.js
+ui-village.js  ← data.js, engine.js, ui-core.js, ui-round.js (buildRound(), _stepIdx/_stepRots),
+                 ui-hud.js, ui-inventory.js, ui-recap.js (updateCollection(), pour resumeSavedGame())
 ui-inventory.js← data.js, engine.js, ui-core.js, ui-hud.js, ui-round.js (updateFleeButtonVisibility)
 ui-round.js    ← data.js, engine.js, wheel.js, ui-core.js, ui-audio.js, ui-hud.js,
-                 ui-inventory.js, ui-recap.js, ui-overlays.js (showVictory/showPromotion/showExamFailure)
+                 ui-inventory.js, ui-recap.js (…, updateCollection()),
+                 ui-overlays.js (showVictory/showPromotion/showExamFailure)
 ui-recap.js    ← data.js, engine.js, ui-core.js, ui-svg.js
 ui-overlays.js ← engine.js, ui-core.js, ui-audio.js, ui-svg.js, ui-hud.js, ui-recap.js,
-                 ui-village.js, ui-round.js (_stepIdx, _stepRots — variables partagées, pas des exports)
+                 ui-village.js (…, updateResumeButton()),
+                 ui-round.js (_stepIdx, _stepRots — variables partagées, pas des exports)
 index.html     ← tous les fichiers ci-dessus (confirmRestart() inline appelle Engine
                  et plusieurs fonctions ui/*.js globales)
 ```
@@ -207,8 +236,18 @@ section 5.
 **Classement de session :** `SCOREBOARD` (dans `engine.js`) est une constante de module
 déclarée **en dehors** de l'objet d'état `G`, volontairement : `Engine.fullReset()` (fin
 de partie → retour à l'écran village) réinitialise `G` mais ne doit **pas** effacer les
-parties précédentes du classement. Seul un rechargement complet de la page efface
-`SCOREBOARD` (il n'est pas persisté en localStorage).
+parties précédentes du classement. Chargé une fois depuis localStorage au démarrage du
+module (`_loadScoreboard()`) et réécrit en entier à chaque partie terminée
+(`recordRun()` → `_persistScoreboard()`) : il survit donc aussi bien à `fullReset()`
+qu'à un rechargement de page.
+
+**Sauvegarde/reprise :** seul mécanisme de persistance de ce jeu, entièrement local —
+`Engine.saveGame()`/`loadGame()`/`hasSaveGame()`/`deleteSaveGame()` lisent et écrivent la
+clé localStorage `"ndw_save_v1"` (le classement utilise une clé séparée,
+`"ndw_scoreboard_v1"`). Aucune base de données, aucun compte, aucune requête réseau —
+tout reste sur la machine du joueur. `saveGame()` n'est appelée qu'à une limite "propre"
+de round (jamais en cours de spin), pour ne jamais reprendre une partie au milieu d'un
+tirage en suspens (voir section 3, point 7).
 
 ---
 
@@ -252,6 +291,14 @@ parties précédentes du classement. Seul un rechargement complet de la page eff
 - Le son est toujours synthétisé (Web Audio API), jamais chargé depuis un fichier —
   contrainte de la CSP (`img-src 'self' data:`, aucune ressource réseau externe
   autorisée). Voir `ui-audio.js`.
+- Un match nul est un statu quo pur : aucune fonction ne doit le traiter comme une
+  victoire (progression de rang, butin garanti, vague de défense de Kage comptée) ni
+  comme une défaite (perte de vie). Seul `outcomeIdx === 0` (Victoire nette) déclenche un
+  effet positif — voir `Engine.applyOutcome()`.
+- `Engine.saveGame()` n'est appelée qu'à une limite "propre" de round (juste après que
+  les roues d'un nouveau round/d'une nouvelle vague ont été (re)dessinées), jamais en
+  cours de spin — une reprise de partie ne doit jamais tomber au milieu d'un tirage en
+  suspens. Voir section 4 pour le détail du mécanisme de sauvegarde.
 
 ### Ordre de chargement des `<script>`
 L'ordre dans `index.html` est contraint par les dépendances :
@@ -319,8 +366,9 @@ au moment de l'exécution (pas de vérification à l'import comme avec de vrais 
 
 ### Ajouter/ajuster le mode défense de Kage
 1. Ouvrir `js/engine.js` → `enterKageDefense()` (entrée dans le mode), `recordKageWave()`
-   (comptage des vagues repoussées), `buildKageLootPool()` (butin à 25% via le champ
-   `forcedWeight` d'un item "Rien cette fois" — voir le typedef `LootItemData`)
+   (comptage des vagues repoussées — uniquement sur victoire nette), `buildLootPool()`
+   (butin garanti sur victoire, 40% de chances sinon, via le champ `forcedWeight` d'un
+   item "Rien cette fois" — voir le typedef `LootItemData` ; même règle en mode normal)
 2. Ouvrir `js/ui/ui-round.js` → `buildSteps()` (n'inclut plus l'étape "examen" tant que
    `G.kageDefense` est vrai) et `continueKageDefense()` (enchaînement des vagues)
 3. Ouvrir `js/ui/ui-overlays.js` → `closeKage()` (bascule dans le mode au lieu d'un reset
@@ -350,6 +398,15 @@ au moment de l'exécution (pas de vérification à l'import comme avec de vrais 
 3. Créer un fichier `js/ui/ui-<nom>.js` avec le module header standard (voir section 5),
    et l'ajouter à `index.html` **après** `ui-core.js` (et après tout fichier dont il dépend)
 
+### Ajouter un nouveau point de sauvegarde (limite de round)
+1. Repérer l'endroit dans `js/ui/*.js` où un nouveau round (ou une nouvelle vague de
+   défense de Kage) vient d'être construit — juste après un appel à `buildRound()`
+2. Ajouter `Engine.saveGame();` juste après (voir `nextRound()`, `continueKageDefense()`,
+   `closeKage()` dans `ui-round.js`/`ui-overlays.js` pour des exemples) — ne jamais
+   l'appeler pendant qu'une roue tourne (`G.round.spinning === true`)
+3. Si un nouvel état de partie doit être effacé en fin de partie (comme
+   `Engine.deleteSaveGame()` l'est dans `closeGameOver()`), l'ajouter au même endroit
+
 ---
 
 ## 7. Bugs Connus
@@ -367,3 +424,4 @@ les 8 autres qui étaient du code ou du CSS mort sans impact fonctionnel visible
 | 1.0 | (historique, avant refactoring) | Architecture monolithique : `data.js`, `engine.js`, `wheel.js`, `ui.js` (un seul fichier UI) et 2 CSS (`style.css`, `illustrations.css`) |
 | 2.0 | 2026-07-03 | Refactoring modulaire Phase 1 — découpage de `ui.js` en 8 fichiers `js/ui/*.js` par zone d'écran, et des 2 CSS en `css/base.css` + 8 `css/components/*.css`. Phase 2 : documentation JSDoc exhaustive de tous les fichiers `.js` et rédaction de ce fichier. |
 | 3.0 | 2026-07-06 | Suppression du système d'"époque" aléatoire caché : `STARTERS` reclassé par village uniquement, `ANTAGONISTS` reclassé par rang (et par village pour Genin/Chûnin — rivalités lore-cohérentes), rangs Jônin/Kage partagés (menaces globales). Ajout des portraits (`CHARACTER_PORTRAITS`, `Engine.getPortrait()`) pour joueur et antagonistes, évoluant avec le rang et figés dans l'historique une fois un combat résolu ; suppression des personnages/antagonistes sans image disponible. Refonte du butin : empilement des consommables (`count`), objets soin/fuite de combat, objets à activation manuelle (`isManualUseItem()` + tutoriel). Refonte de la difficulté d'examen : ramp progressive basée sur les victoires en combat, 100% garanti après `WINS_PER_RANK` victoires sans réussite. Ajout du mode défense sans fin après le rang Kage (`G.kageDefense`, vagues, butin à 25% via roue dédiée) et d'un classement de session (`SCOREBOARD`, `Engine.recordRun()`/`getScoreboard()`, overlay dédié). Ajout de `ui-audio.js` : effets sonores synthétisés (Web Audio API, pas de fichier — contrainte CSP) pour le tic de roue (synchronisé sur les changements de segment sous le pointeur via `wheel.js` → `onTick`/`_segmentAtPointer()`, s'arrête naturellement avec l'animation), les résultats, le butin, les promotions et le game over, avec bouton pour couper le son. Compaction du récapitulatif de round et de l'historique des combats (listes en une ligne, portraits réduits) pour réduire le scroll. |
+| 3.1 | 2026-07-06 | Ajout d'un système de sauvegarde/reprise 100% local (`localStorage`, aucune base de données) : `Engine.saveGame()`/`loadGame()`/`hasSaveGame()`/`deleteSaveGame()`, sauvegarde automatique à chaque limite propre de round (jamais en cours de spin), bouton "Reprendre la partie en cours" sur l'écran de village (`ui-village.js` → `updateResumeButton()`/`resumeSavedGame()`). `SCOREBOARD` persiste désormais lui aussi dans localStorage (`_loadScoreboard()`/`_persistScoreboard()`), et survit donc à un rechargement de page (plus seulement à `fullReset()`). Correction : l'historique des combats (`updateCollection()`) se rafraîchissait uniquement en fin de round via `showRoundSummary()` — jamais en mode défense de Kage, qui ne passe pas par cet écran — il est maintenant mis à jour instantanément dans `ui-round.js` → `applyIssue()`, dès la résolution de chaque combat. Correction d'un bug où un "match nul" était compté comme une victoire (incrémentait `G.wins` et le score de vagues en défense de Kage, à cause d'un champ `xp` mal exploité) : un match nul est désormais un statu quo pur (`outcomeIdx === 0` uniquement). Refonte du butin : fusion de `buildLootPool()`/`buildKageLootPool()` en une seule fonction paramétrée — butin garanti sur victoire nette, 40% de chances seulement sur match nul/défaite survécue, même règle en mode normal et en défense de Kage (remplace l'ancien taux fixe de 25% spécifique à la défense de Kage). |

@@ -87,17 +87,15 @@ const VILLAGES = [
  * @typedef {Object} OutcomeData
  * @property {string} short      - Libellé affiché sur la roue et dans le récapitulatif
  * @property {string} emoji      - Emoji associé à l'issue
- * @property {number} xp         - Réservé pour une future progression XP (non lu ailleurs
- *                                 dans le code actuel — la progression se fait via G.wins)
  * @property {number} life       - Modification de vies : 0 (aucune) ou -1 (perte, sauf
  *                                 annulation par un talisman "chance" ou soin automatique)
  * @property {string} cls        - Classe CSS appliquée au résultat (couleur du texte)
  * @property {string} wheelColor - Couleur hex du segment sur la roue canvas
  */
 const OUTCOMES = [
-  { short:"Victoire",   emoji:"🏆", xp:3, life: 0, cls:"out-v", wheelColor:"#059669" },
-  { short:"Match nul",  emoji:"🤝", xp:1, life: 0, cls:"out-d", wheelColor:"#1D4ED8" },
-  { short:"Défaite",    emoji:"💀", xp:0, life:-1, cls:"out-x", wheelColor:"#7F1D1D" },
+  { short:"Victoire",   emoji:"🏆", life: 0, cls:"out-v", wheelColor:"#059669" },
+  { short:"Match nul",  emoji:"🤝", life: 0, cls:"out-d", wheelColor:"#1D4ED8" },
+  { short:"Défaite",    emoji:"💀", life:-1, cls:"out-x", wheelColor:"#7F1D1D" },
 ];
 
 /**
@@ -450,10 +448,12 @@ const CHARACTER_PORTRAITS = {
  *                              objets permanents ("bonus_xp_N") sont uniques : une fois
  *                              possédés, ils disparaissent du pool de butin pour le
  *                              reste de la partie (voir engine.js → buildLootPool()).
- * @property {number} [forcedWeight] - Réservé à l'objet fictif "Rien cette fois" du mode
- *                              défense de Kage (voir engine.js → buildKageLootPool()) :
- *                              poids explicite de la roue Butin, prioritaire sur le poids
- *                              par rareté (voir wheel.js → getLootWheelData()). Absent de
+ * @property {number} [forcedWeight] - Réservé à l'objet fictif "Rien cette fois", ajouté
+ *                              par engine.js → buildLootPool() quand le combat de ce
+ *                              round n'est pas une victoire nette (match nul ou défaite
+ *                              survécue — butin réduit à 40% de chances) : poids
+ *                              explicite de la roue Butin, prioritaire sur le poids par
+ *                              rareté (voir wheel.js → getLootWheelData()). Absent de
  *                              tous les objets réels de LOOT_POOL.
  */
 const LOOT_POOL = [

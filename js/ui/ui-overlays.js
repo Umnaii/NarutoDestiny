@@ -7,14 +7,15 @@
  *
  * @dependencies
  *   - ../engine.js → Engine.currentRank(), Engine.getState(), Engine.fullReset(),
- *                    Engine.enterKageDefense(), Engine.recordRun(), Engine.getScoreboard()
+ *                    Engine.enterKageDefense(), Engine.recordRun(), Engine.getScoreboard(),
+ *                    Engine.saveGame(), Engine.deleteSaveGame()
  *   - ui-core.js   → $(), showScreen()
  *   - ui-audio.js  → playPromotionSound(), playGameOverSound()
  *   - ui-svg.js    → makeRankEmblem()
  *   - ui-hud.js    → updateRankHUD(), updateHUD(), animFill()
  *   - ui-recap.js  → showRoundSummary()
  *   - ui-inventory.js → updateInventoryBar()
- *   - ui-village.js → buildVillageScreen(), resetVillageSelection()
+ *   - ui-village.js → buildVillageScreen(), resetVillageSelection(), updateResumeButton()
  *   - ui-round.js  → _stepIdx, _stepRots (réinitialisés directement), buildRound()
  *
  * @exports (fonctions globales)
@@ -81,14 +82,14 @@ function showVictory() {
 /**
  * @description Ferme l'écran de victoire et fait entrer le joueur en mode défense de
  *              Kage (voir Engine.enterKageDefense()) : la partie ne se termine plus ici,
- *              elle continue indéfiniment (vagues d'ennemis, 25% de chances de butin par
- *              vague) jusqu'au game over. Reconstruit immédiatement l'arène pour la
- *              première vague.
+ *              elle continue indéfiniment (vagues d'ennemis, butin garanti sur victoire
+ *              nette, 40% de chances sinon — voir Engine.buildLootPool()) jusqu'au game
+ *              over. Reconstruit immédiatement l'arène pour la première vague.
  *
  * @sideEffects
  *   Retire la classe `.show` de #kageOv, appelle Engine.enterKageDefense(), réinitialise
  *   _stepIdx/_stepRots (définis dans ui-round.js), appelle buildRound(), updateHUD(),
- *   updateInventoryBar()
+ *   updateInventoryBar(), sauvegarde la partie (Engine.saveGame())
  */
 function closeKage() {
   $("kageOv").classList.remove("show");
@@ -98,6 +99,7 @@ function closeKage() {
   buildRound(); // buildSteps() n'inclut plus que antag+issue tant que G.kageDefense est vrai
   updateHUD();
   updateInventoryBar();
+  Engine.saveGame();
 }
 
 /**
@@ -135,23 +137,27 @@ function showGameOver() {
 /**
  * @description Ferme l'écran de game over et ramène le joueur à l'écran de sélection
  *              de village pour une nouvelle partie. Enregistre d'abord la partie dans le
- *              classement (voir Engine.recordRun(), getScoreboard()) avant que
- *              Engine.fullReset() ne l'efface.
+ *              classement (voir Engine.recordRun(), getScoreboard()), puis efface sa
+ *              sauvegarde (Engine.deleteSaveGame() — une partie terminée n'a plus rien à
+ *              reprendre) avant que Engine.fullReset() ne remette l'état à zéro.
  *
  * @sideEffects
  *   Retire la classe `.show` de #goOv, retire `.in-game` du body, appelle
- *   Engine.recordRun() puis Engine.fullReset() et resetVillageSelection(),
- *   réinitialise _stepIdx/_stepRots, reconstruit l'écran village et l'affiche
+ *   Engine.recordRun(), Engine.deleteSaveGame(), Engine.fullReset() et
+ *   resetVillageSelection(), réinitialise _stepIdx/_stepRots, reconstruit l'écran
+ *   village (et le bouton "Reprendre" — désormais masqué) et l'affiche
  */
 function closeGameOver() {
   $("goOv").classList.remove("show");
   document.body.classList.remove('in-game');
   Engine.recordRun();
+  Engine.deleteSaveGame();
   Engine.fullReset();
   resetVillageSelection();
   _stepIdx  = 0;
   _stepRots = [0, 0, 0, 0, 0];
   buildVillageScreen();
+  updateResumeButton();
   showScreen("screenVillage");
 }
 

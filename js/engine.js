@@ -14,20 +14,34 @@
  * @exports (objet Engine)
  *   - getState, setVillage, getStarters, getPersoStyle, getAntags, getAntagData,
  *     getPortrait, computeIssueWeights, computeExamenWeights, setResult, setPerso,
- *     applyOutcome, applyExamen, addLoot, buildLootPool, buildKageLootPool, useHealNow,
+ *     applyOutcome, applyExamen, addLoot, buildLootPool, useHealNow,
  *     useSkipFight, toggleItemArmed, isManualUseItem, markManualUseTutorialSeen,
  *     newRound, fullReset, currentRank, nextRank, rankPct,
- *     enterKageDefense, recordKageWave, recordRun, getScoreboard
+ *     enterKageDefense, recordKageWave, recordRun, getScoreboard,
+ *     saveGame, hasSaveGame, loadGame, deleteSaveGame
  *
  * @sideEffects
- *   - Toutes les fonctions ci-dessus (hors getState/currentRank/nextRank/rankPct, qui
- *     sont des lectures pures) modifient l'objet d'état interne `G`.
+ *   - Toutes les fonctions ci-dessus (hors getState/currentRank/nextRank/rankPct/
+ *     hasSaveGame, qui sont des lectures pures) modifient l'objet d'état interne `G`.
+ *   - saveGame()/loadGame()/deleteSaveGame() et recordRun() lisent/écrivent aussi
+ *     localStorage (voir section SAUVEGARDE ci-dessous).
  *
- * SÉCURITÉ : aucune donnée utilisateur. Pas de localStorage.
- *            Tout est en RAM — réinitialisé à chaque visite.
+ * SÉCURITÉ : aucune donnée utilisateur identifiable, aucune requête réseau, aucune base
+ *            de données. Seule persistance : l'état de partie et le classement de
+ *            session, stockés en clair dans localStorage (clés "ndw_save_v1" et
+ *            "ndw_scoreboard_v1", voir saveGame()/getScoreboard()) — uniquement sur la
+ *            machine du joueur, jamais transmis nulle part.
  */
 
 const Engine = (() => {
+
+  // ── SAUVEGARDE (localStorage) ──────────────────────────────────
+  // Seul mécanisme de persistance de ce jeu : ni backend, ni compte, ni base de
+  // données — juste localStorage sur la machine du joueur. Le nom de chaque clé inclut
+  // une version ("v1") pour pouvoir ignorer proprement une sauvegarde d'un format
+  // devenu incompatible après une évolution du jeu, plutôt que de planter au chargement.
+  const SAVE_KEY       = "ndw_save_v1";
+  const SCOREBOARD_KEY = "ndw_scoreboard_v1";
 
   // ── État global ──────────────────────────────────────────────
   /**
@@ -44,7 +58,7 @@ const Engine = (() => {
    * @property {number}  lives           - Vies restantes. Valeur initiale : 3. Game over si atteint 0. @type {number}
    * @property {number}  livesMax        - Plafond de vies, peut monter jusqu'à 5 via un soin obtenu à vies pleines. Valeur initiale : 3. @type {number}
    * @property {number}  rankIdx         - Index courant dans RANKS (0 = Genin … 3 = Kage). Valeur initiale : 0. @type {number}
-   * @property {number}  wins            - Victoires en combat depuis la dernière promotion ; déclenche l'examen dès que > 0. Valeur initiale : 0. @type {number}
+   * @property {number}  wins            - Victoires NETTES en combat depuis la dernière promotion (un match nul ne compte pas — statu quo) ; déclenche l'examen dès que > 0. Valeur initiale : 0. @type {number}
    * @property {?string} perso           - Nom du personnage tiré, persistant jusqu'au game over/victoire. Valeur initiale : null. @type {?string}
    * @property {?string} persoStyle      - Style de combat du personnage ("ninjutsu"|"taijutsu"|"genjutsu"). Valeur initiale : null. @type {?string}
    * @property {Array}   inventory       - Objets de loot possédés (voir data.js → LootItemData). Valeur initiale : []. @type {Array}
@@ -107,12 +121,39 @@ const Engine = (() => {
     status: "village_select",
   };
 
-  // ── CLASSEMENT (persiste entre les parties, tant que la page n'est pas rechargée) ──
+  // ── CLASSEMENT (persisté dans localStorage — survit aux rechargements de page) ──
   // Hors de G volontairement : fullReset() ne doit PAS l'effacer, pour permettre de
-  // comparer plusieurs parties d'affilée dans la même session (voir recordRun(),
-  // getScoreboard()). SÉCURITÉ : toujours en RAM uniquement, jamais persisté au disque
-  // (pas de localStorage) — perdu à chaque rechargement de page, comme le reste de G.
-  const SCOREBOARD = [];
+  // comparer plusieurs parties d'affilée (voir recordRun(), getScoreboard()). Chargé une
+  // fois au démarrage du module, puis réécrit en entier à chaque partie terminée (voir
+  // recordRun() → _persistScoreboard()).
+  const SCOREBOARD = _loadScoreboard();
+
+  /**
+   * @description Charge le classement persisté depuis localStorage, au démarrage du
+   *              module. Repli silencieux sur un classement vide si localStorage est
+   *              indisponible (navigation privée, quota…) ou si son contenu est corrompu.
+   * @returns {Object[]} Le classement chargé, ou [] en cas d'échec
+   */
+  function _loadScoreboard() {
+    try {
+      const raw = localStorage.getItem(SCOREBOARD_KEY);
+      const parsed = raw ? JSON.parse(raw) : null;
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  /**
+   * @description Réécrit l'intégralité du classement dans localStorage. Appelée à la
+   *              fin de recordRun(), après chaque partie terminée.
+   * @sideEffects
+   *   Écrit dans localStorage sous la clé SCOREBOARD_KEY. Échoue silencieusement si
+   *   localStorage est indisponible.
+   */
+  function _persistScoreboard() {
+    try { localStorage.setItem(SCOREBOARD_KEY, JSON.stringify(SCOREBOARD)); } catch (e) {}
+  }
 
   // ── Accès à l'état ───────────────────────────────────────────
   /**
@@ -353,8 +394,9 @@ const Engine = (() => {
    *   Modifie G.inventory (retire le talisman/soin utilisé, et le boost "boost_issue"
    *   s'il était activé), G.lives, G.status (si game over), G.antagHistory (incrémente
    *   win/draw/loss de l'antagoniste, fige son portrait à la première rencontre),
-   *   G.badges (ajoute un badge pour ce combat, quel qu'en soit le résultat), G.wins,
-   *   G.examReady, G.phase (passe à "loot" si la partie continue)
+   *   G.badges (ajoute un badge pour ce combat, quel qu'en soit le résultat), G.wins
+   *   (uniquement sur une victoire nette — un match nul est un statu quo, il ne fait ni
+   *   gagner ni perdre de terrain), G.examReady, G.phase (passe à "loot" si la partie continue)
    */
   function applyOutcome(outcomeIdx) {
     const outcome = OUTCOMES[outcomeIdx];
@@ -411,8 +453,9 @@ const Engine = (() => {
     const gameOver = G.lives <= 0;
     if (gameOver) { G.status = "gameover"; return { usedChance, usedHeal, lifeChange, examReady: false, gameOver }; }
 
-    // Compteur de victoires pour déclencher l'examen (victoire/nul uniquement)
-    if (outcome.xp > 0) G.wins++;
+    // Compteur de victoires pour déclencher l'examen — uniquement une victoire nette :
+    // un match nul est un statu quo (ni gain ni perte de terrain), il ne compte pas.
+    if (outcomeIdx === 0) G.wins++;
 
     // L'examen se déclenche après 1 victoire (win > 0 suffit)
     // On ne passe à l'examen qu'après le loot
@@ -732,23 +775,36 @@ const Engine = (() => {
   }
 
   /**
-   * @description Construit un pool d'objets distincts pour la roue "Butin", tiré depuis
-   *              LOOT_POOL avec un tirage pondéré par rareté (voir RARITY_WEIGHTS) après
-   *              mélange initial. Retente jusqu'à 200 fois pour obtenir `size` objets
-   *              uniques ; si le pool reste trop court (<4), le complète en piochant les
-   *              objets restants dans l'ordre. Les objets permanents ("bonus_xp_N") déjà
-   *              possédés (voir _isConsumableItem()) sont exclus du pool — inutile de les
-   *              looter à nouveau, ils disparaissent donc du butin possible pour le reste
-   *              de la partie. Les objets consommables (soin, chance, boost, fuite)
-   *              restent tirables même si le joueur en possède déjà (voir addLoot() pour
-   *              l'empilement en quantité).
+   * @description Construit le pool d'objets distincts pour la roue "Butin" du round en
+   *              cours, tiré depuis LOOT_POOL avec un tirage pondéré par rareté (voir
+   *              RARITY_WEIGHTS) après mélange initial. Retente jusqu'à 200 fois pour
+   *              obtenir `size` objets uniques ; si le pool reste trop court (<4), le
+   *              complète en piochant les objets restants dans l'ordre. Les objets
+   *              permanents ("bonus_xp_N") déjà possédés (voir _isConsumableItem()) sont
+   *              exclus du pool — inutile de les looter à nouveau, ils disparaissent donc
+   *              du butin possible pour le reste de la partie. Les objets consommables
+   *              (soin, chance, boost, fuite) restent tirables même si le joueur en
+   *              possède déjà (voir addLoot() pour l'empilement en quantité).
    *
-   * @param {number} [size=8] - Nombre d'objets à inclure dans le pool
+   *              Le butin dépend de l'issue du combat de ce round (voir `guaranteed`) :
+   *              une victoire nette garantit un objet ; un match nul ou une défaite
+   *              (survécue grâce à un talisman/soin) ne laisse que 40% de chances d'en
+   *              obtenir un — un objet fictif "Rien cette fois" est alors ajouté au pool,
+   *              avec un poids calculé pour occuper exactement 60% de la roue (les objets
+   *              réels se partagent les 40% restants, proportionnellement à leur rareté
+   *              comme d'habitude).
    *
-   * @returns {Object[]} Sous-ensemble de LOOT_POOL (déjà possédés exclus), de longueur
-   *                     `size` au maximum
+   * @param {number}  [size=8]          - Nombre d'objets réels à inclure dans le pool
+   * @param {boolean} [guaranteed=true] - true si le combat de ce round est une victoire
+   *                                      nette (butin garanti, pas de "Rien" sur la
+   *                                      roue) ; false pour un match nul ou une défaite
+   *                                      survécue (40% de chances seulement)
+   *
+   * @returns {Object[]} `size` objets réels (déjà possédés exclus) au maximum, plus
+   *                     l'objet "Rien cette fois" en dernière position si `guaranteed`
+   *                     est false
    */
-  function buildLootPool(size = 8) {
+  function buildLootPool(size = 8, guaranteed = true) {
     const ownedPermanentIds = new Set(
       G.inventory.filter(it => !_isConsumableItem(it)).map(it => it.id)
     );
@@ -790,29 +846,14 @@ const Engine = (() => {
       }
     }
 
-    return pool.slice(0, size);
-  }
+    const realPool = pool.slice(0, size);
+    if (guaranteed) return realPool;
 
-  /**
-   * @description Construit le pool de la roue "Butin" pour le mode défense de Kage : un
-   *              petit nombre d'objets réels (voir buildLootPool()) auxquels s'ajoute un
-   *              objet fictif "Rien cette fois" dont le poids est calculé pour occuper
-   *              exactement 75% de la roue (les objets réels se partagent donc les 25%
-   *              restants, proportionnellement à leur rareté comme d'habitude) — chaque
-   *              vague garde ainsi, wheel à l'appui, 25% de chances d'obtenir un butin.
-   *
-   * @param {number} [size=4] - Nombre d'objets réels à inclure (avant l'ajout de "Rien")
-   *
-   * @returns {Object[]} `size` objets réels (ou moins) + l'objet "Rien cette fois" en
-   *                     dernière position
-   */
-  function buildKageLootPool(size = 4) {
-    const realPool = buildLootPool(size);
     const realTotal = realPool.reduce((s, it) => s + RARITY_WEIGHTS[it.rarity], 0) || 1;
     const nothing = {
       id: "nothing", name: "Rien cette fois", emoji: "💨", type: "none",
       rarity: "common", desc: "Cette fois, aucun butin.", effect: "none",
-      forcedWeight: realTotal * 3, // 3T / (3T + T) = 75%
+      forcedWeight: realTotal * 1.5, // 1.5T / (1.5T + T) = 60% (donc 40% de chances réelles)
     };
     return [...realPool, nothing];
   }
@@ -911,7 +952,7 @@ const Engine = (() => {
    *
    * @sideEffects
    *   Ajoute une entrée à SCOREBOARD (village, rang atteint, badges, vagues repoussées,
-   *   horodatage)
+   *   horodatage) et la persiste dans localStorage (voir _persistScoreboard())
    */
   function recordRun() {
     SCOREBOARD.push({
@@ -922,6 +963,7 @@ const Engine = (() => {
       reachedKageDefense: G.kageDefense,
       endedAt:            Date.now(),
     });
+    _persistScoreboard();
   }
 
   /**
@@ -960,12 +1002,89 @@ const Engine = (() => {
    */
   function rankPct()     { return Math.min(G.wins / WINS_PER_RANK * 100, 100); }
 
+  /**
+   * @description Sauvegarde l'intégralité de la partie en cours dans localStorage, pour
+   *              permettre de la reprendre après avoir fermé/rechargé la page. Appelée
+   *              par les fichiers ui/*.js uniquement à une limite "propre" de round —
+   *              juste après que les roues d'un nouveau round (ou d'une nouvelle vague en
+   *              mode défense de Kage) ont été (re)dessinées, jamais en cours de spin —
+   *              pour ne jamais reprendre une partie au milieu d'un tirage en suspens.
+   *
+   * @sideEffects
+   *   Écrit dans localStorage sous la clé SAVE_KEY. Échoue silencieusement si
+   *   localStorage est indisponible (navigation privée, quota dépassé…) — la partie
+   *   continue normalement en RAM, seule la sauvegarde est perdue.
+   */
+  function saveGame() {
+    try {
+      localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 1, state: G }));
+    } catch (e) { /* stockage indisponible — silencieux */ }
+  }
+
+  /**
+   * @description Indique si une sauvegarde valide est présente. Utilisée par
+   *              ui-village.js pour afficher (ou masquer) le bouton "Reprendre la
+   *              partie en cours" sur l'écran de sélection de village.
+   *
+   * @returns {boolean} true si une sauvegarde exploitable existe dans localStorage
+   */
+  function hasSaveGame() {
+    try {
+      const raw = localStorage.getItem(SAVE_KEY);
+      if (!raw) return false;
+      const parsed = JSON.parse(raw);
+      return !!(parsed && parsed.v === 1 && parsed.state);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /**
+   * @description Recharge la partie sauvegardée : remplace tous les champs de l'état
+   *              global `G` par ceux issus de la sauvegarde. Ne modifie rien si aucune
+   *              sauvegarde valide n'est trouvée (format inconnu, entrée absente ou
+   *              corrompue).
+   *
+   * @returns {boolean} true si une sauvegarde a été chargée avec succès
+   *
+   * @sideEffects
+   *   Si le retour est true, remplace tous les champs de G par ceux de la sauvegarde
+   */
+  function loadGame() {
+    try {
+      const raw = localStorage.getItem(SAVE_KEY);
+      if (!raw) return false;
+      const parsed = JSON.parse(raw);
+      if (!parsed || parsed.v !== 1 || !parsed.state) return false;
+      Object.assign(G, parsed.state);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /**
+   * @description Efface la sauvegarde de partie en cours, s'il y en a une. Appelée
+   *              chaque fois qu'une partie se termine pour de bon (game over — voir
+   *              ui-overlays.js → closeGameOver()) ou est abandonnée volontairement
+   *              (voir index.html → confirmRestart()) : il n'y a alors plus rien à
+   *              reprendre.
+   *
+   * @sideEffects
+   *   Retire l'entrée SAVE_KEY de localStorage. Échoue silencieusement si localStorage
+   *   est indisponible.
+   */
+  function deleteSaveGame() {
+    try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+  }
+
   return {
     getState, setVillage, getStarters, getPersoStyle, getAntags, getAntagData,
     getPortrait, computeIssueWeights, computeExamenWeights,
-    setResult, setPerso, applyOutcome, applyExamen, addLoot, buildLootPool, buildKageLootPool,
+    setResult, setPerso, applyOutcome, applyExamen, addLoot, buildLootPool,
     useHealNow, useSkipFight, toggleItemArmed, isManualUseItem, markManualUseTutorialSeen,
     newRound, fullReset, currentRank, nextRank, rankPct,
     enterKageDefense, recordKageWave, recordRun, getScoreboard,
+    saveGame, hasSaveGame, loadGame, deleteSaveGame,
   };
 })();
