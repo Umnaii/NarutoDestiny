@@ -79,8 +79,10 @@
 .sr-val.loot   { color: var(--green); }
 
 /* ── BUTTONS ── */
+.ctrl-btns { display: flex; gap: 10px; width: 100%; }
+
 .btn-spin {
-  width: 100%; padding: 13px 20px; border: none; border-radius: 11px;
+  flex: 1; padding: 13px 20px; border: none; border-radius: 11px;
   background: linear-gradient(135deg, var(--orange-dark), var(--orange));
   color: #fff; font-family: 'Rajdhani', sans-serif;
   font-size: 16px; font-weight: 700; letter-spacing: .1em;
@@ -93,6 +95,17 @@
 .btn-spin:active:not(:disabled) { transform: scale(.98); }
 .btn-spin:disabled { opacity: .4; cursor: not-allowed; transform: none; }
 .btn-spin.going { background: linear-gradient(135deg, #2a2a2a, #333); }
+
+/* Bouton "Fuir" — visible seulement sur l'étape Combat avec un objet fuite activé */
+.btn-flee {
+  flex: 0 0 auto; padding: 13px 18px; border: 1px solid rgba(148,163,184,.4);
+  border-radius: 11px; background: rgba(71,85,105,.25);
+  color: var(--text); font-family: 'Rajdhani', sans-serif;
+  font-size: 14px; font-weight: 700; letter-spacing: .05em;
+  cursor: pointer; transition: all .2s;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.btn-flee:hover { background: rgba(71,85,105,.4); border-color: rgba(148,163,184,.6); }
 
 .btn-all {
   display: inline-flex; align-items: center; gap: 10px;

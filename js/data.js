@@ -146,8 +146,6 @@ const STARTERS = {
     { name:"Rock Lee",        style:"taijutsu", canBeGenin:true  },
     { name:"Neji Hyûga",      style:"taijutsu", canBeGenin:true  },
     { name:"Hinata Hyûga",    style:"taijutsu", canBeGenin:true  },
-    { name:"Shino Aburame",   style:"ninjutsu", canBeGenin:true  },
-    { name:"Kiba Inuzuka",    style:"taijutsu", canBeGenin:true  },
     { name:"Shikamaru Nara",  style:"genjutsu", canBeGenin:true  },
     { name:"Ino Yamanaka",    style:"genjutsu", canBeGenin:true  },
     { name:"Choji Akimichi",  style:"taijutsu", canBeGenin:true  },
@@ -160,19 +158,15 @@ const STARTERS = {
     { name:"Gaara",   style:"ninjutsu", canBeGenin:true  },
     { name:"Kankuro", style:"ninjutsu", canBeGenin:true  },
     { name:"Temari",  style:"ninjutsu", canBeGenin:true  },
-    { name:"Matsuri", style:"taijutsu", canBeGenin:true  },
   ],
   "Kiri": [
     { name:"Zabuza Momochi", style:"taijutsu", canBeGenin:true  },
     { name:"Haku",           style:"ninjutsu", canBeGenin:true  },
     { name:"Chojuro",        style:"taijutsu", canBeGenin:true  },
     { name:"Ao",             style:"genjutsu", canBeGenin:true  },
-    // Mei Terumi = déjà Mizukage → canBeGenin:false
-    { name:"Mei Terumi",     style:"ninjutsu", canBeGenin:false },
   ],
   "Kumo": [
     { name:"Killer B",  style:"taijutsu", canBeGenin:true  },
-    { name:"Yugito Nii",style:"ninjutsu", canBeGenin:true  },
     { name:"Omoi",      style:"ninjutsu", canBeGenin:true  },
     { name:"Karui",     style:"taijutsu", canBeGenin:true  },
     // A = déjà Raikage → canBeGenin:false
@@ -187,7 +181,6 @@ const STARTERS = {
   "Oto": [
     { name:"Dosu Kinuta", style:"ninjutsu", canBeGenin:true  },
     { name:"Zaku Abumi",  style:"ninjutsu", canBeGenin:true  },
-    { name:"Kin Tsuchi",  style:"genjutsu", canBeGenin:true  },
     { name:"Jugo",        style:"taijutsu", canBeGenin:true  },
     { name:"Suigetsu",    style:"taijutsu", canBeGenin:true  },
     { name:"Karin",       style:"genjutsu", canBeGenin:true  },
@@ -226,19 +219,14 @@ const ANTAGONISTS = {
   // ── GENIN — rivalités de village crédibles pour de jeunes ninjas ──
   "Genin": {
     "Konoha": [
-      { name:"Mizuki",         weakness:"taijutsu", resistance:"ninjutsu" },
       { name:"Dosu Kinuta",    weakness:"taijutsu", resistance:"genjutsu" },
       { name:"Zaku Abumi",     weakness:"genjutsu", resistance:"ninjutsu" },
-      { name:"Kin Tsuchi",     weakness:"ninjutsu", resistance:"genjutsu" },
-      { name:"Kidomaru",       weakness:"taijutsu", resistance:"ninjutsu" },
       { name:"Jirobo",         weakness:"ninjutsu", resistance:"taijutsu" },
       { name:"Gato",           weakness:"taijutsu", resistance:"genjutsu" },
     ],
     "Suna": [
       { name:"Rock Lee",       weakness:"ninjutsu", resistance:"taijutsu" },
       { name:"Neji Hyûga",     weakness:"ninjutsu", resistance:"taijutsu" },
-      { name:"Kiba Inuzuka",   weakness:"genjutsu", resistance:"taijutsu" },
-      { name:"Shino Aburame",  weakness:"taijutsu", resistance:"ninjutsu" },
     ],
     // Rivalité de village : Kiri ↔ Suna (aucun rival naturel dans le lore pour ce
     // village, mais Kankuro/Temari/Gaara ont un portrait — mieux vaut de vrais
@@ -293,8 +281,7 @@ const ANTAGONISTS = {
       { name:"Akatsuchi",  weakness:"ninjutsu", resistance:"taijutsu" },
     ],
     "Iwa": [
-      { name:"Yugito Nii", weakness:"taijutsu", resistance:"ninjutsu" },
-      { name:"Karui",      weakness:"ninjutsu", resistance:"taijutsu" },
+      { name:"Karui", weakness:"ninjutsu", resistance:"taijutsu" },
     ],
     "Oto": [
       { name:"Ebisu",          weakness:"genjutsu", resistance:"ninjutsu" },
@@ -313,7 +300,6 @@ const ANTAGONISTS = {
     { name:"Konan",            weakness:"taijutsu", resistance:"ninjutsu" },
     { name:"Orochimaru",       weakness:"taijutsu", resistance:"genjutsu" },
     { name:"Sasuke Uchiha",    weakness:"taijutsu", resistance:"genjutsu" },
-    { name:"Toneri Otsutsuki", weakness:"taijutsu", resistance:"ninjutsu" },
   ],
   // ── KAGE — boss ultimes, menace mondiale, communs à tous les villages ──
   "Kage": [
@@ -321,7 +307,6 @@ const ANTAGONISTS = {
     { name:"Obito Uchiha",           weakness:"ninjutsu", resistance:"genjutsu" },
     { name:"Madara Uchiha",          weakness:"taijutsu", resistance:"ninjutsu" },
     { name:"Kaguya Otsutsuki",       weakness:"ninjutsu", resistance:"taijutsu" },
-    { name:"Kinkaku & Ginkaku",      weakness:"genjutsu", resistance:"ninjutsu" },
     { name:"Zetsu Blanc",            weakness:"taijutsu", resistance:"ninjutsu" },
     { name:"Kabuto Yakushi (Edo T.)",weakness:"taijutsu", resistance:"genjutsu" },
   ],
@@ -440,7 +425,7 @@ const CHARACTER_PORTRAITS = {
  * @property {string} name   - Nom affiché
  * @property {string} emoji  - Emoji/icône affiché dans l'inventaire et le récapitulatif
  * @property {string} type   - "weapon" | "ninjutsu" | "taijutsu" | "genjutsu" | "heal" |
- *                              "chance" | "boost"
+ *                              "chance" | "boost" | "skip"
  * @property {string} desc   - Description narrative de l'objet
  * @property {string} rarity - "common" | "uncommon" | "rare" | "epic" — pondère le tirage
  *                              (voir RARITY_WEIGHTS) et l'affichage (_rarityLabel())
@@ -451,9 +436,25 @@ const CHARACTER_PORTRAITS = {
  *                              computeExamenWeights() selon le type, pas selon ce champ),
  *                              "boost_issue"/"boost_examen" (gros bonus ponctuel, mais
  *                              n'agit QUE si le joueur l'active lui-même depuis
- *                              l'inventaire avant le combat/examen concerné — voir
- *                              engine.js → isManualUseItem()/toggleItemArmed(); inerte
- *                              et gaspillé sinon)
+ *                              l'inventaire avant le combat/examen concerné), "skip_fight"
+ *                              (évite entièrement le prochain combat, sans victoire ni
+ *                              défaite — n'agit que si activé soi-même). Ces trois
+ *                              derniers sont dits "à activation manuelle" (voir
+ *                              engine.js → isManualUseItem()/toggleItemArmed() ; inertes
+ *                              et gaspillés si jamais activés).
+ *                              Seuls les objets consommables ("heal", "chance",
+ *                              "boost_issue", "boost_examen", "skip_fight") peuvent être
+ *                              looté plusieurs fois dans la même partie — un doublon
+ *                              augmente sa quantité (×2, ×3…) dans l'inventaire au lieu
+ *                              d'une ligne séparée (voir engine.js → addLoot()). Les
+ *                              objets permanents ("bonus_xp_N") sont uniques : une fois
+ *                              possédés, ils disparaissent du pool de butin pour le
+ *                              reste de la partie (voir engine.js → buildLootPool()).
+ * @property {number} [forcedWeight] - Réservé à l'objet fictif "Rien cette fois" du mode
+ *                              défense de Kage (voir engine.js → buildKageLootPool()) :
+ *                              poids explicite de la roue Butin, prioritaire sur le poids
+ *                              par rareté (voir wheel.js → getLootWheelData()). Absent de
+ *                              tous les objets réels de LOOT_POOL.
  */
 const LOOT_POOL = [
   // ── ARMES ──
@@ -485,6 +486,7 @@ const LOOT_POOL = [
   // ── SOINS ──
   { id:"senzu_nar",  name:"Pilule de Chakra",   emoji:"💊",  type:"heal",     rarity:"uncommon", desc:"Restaure une vie. Utilisé automatiquement si tu es blessé.", effect:"heal" },
   { id:"antidote",   name:"Antidote de Tsunade",emoji:"💉",  type:"heal",     rarity:"rare",     desc:"Soin d'urgence signé Tsunade. Restaure une vie.",            effect:"heal" },
+  { id:"soldier_pill", name:"Pilule Soldat",    emoji:"🫘",  type:"heal",     rarity:"common",   desc:"Ration militaire qui restaure les forces. Utilisée automatiquement si tu es blessé.", effect:"heal" },
 
   // ── CHANCE ──
   { id:"omamori",    name:"Omamori Porte-Bonheur",emoji:"🎴", type:"chance",   rarity:"uncommon", desc:"Annule automatiquement une défaite. Usage unique.", effect:"chance" },
@@ -497,6 +499,11 @@ const LOOT_POOL = [
   { id:"forbidden_scroll", name:"Fragment du Rouleau Interdit", emoji:"📜", type:"boost", rarity:"epic",
     desc:"Un fragment du Parchemin interdit. Reste inerte tant que tu ne l'actives pas toi-même avant un examen.",
     effect:"boost_examen" },
+
+  // ── FUITE (activation manuelle obligatoire — voir Engine.isManualUseItem()) ──
+  { id:"smoke_bomb", name:"Bombe Fumigène", emoji:"🌫️", type:"skip", rarity:"rare",
+    desc:"Une bombe fumigène pour disparaître avant un affrontement. Reste inerte tant que tu ne l'actives pas toi-même avant le combat concerné.",
+    effect:"skip_fight" },
 ];
 
 /**
@@ -523,6 +530,7 @@ const TYPE_CSS = {
   heal:     "inv-item-heal",
   chance:   "inv-item-chance",
   boost:    "inv-item-boost",
+  skip:     "inv-item-skip",
 };
 
 /**
@@ -576,4 +584,5 @@ const LOOT_WHEEL_COLORS = {
   heal:     ["#BE185D","#EC4899","#F9A8D4"],
   chance:   ["#D97706","#F59E0B","#FCD34D"],
   boost:    ["#B8860B","#E0BC4C","#F3D673"],
+  skip:     ["#475569","#64748B","#94A3B8"],
 };

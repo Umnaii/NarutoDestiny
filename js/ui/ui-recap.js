@@ -155,7 +155,7 @@ function showRoundSummary() {
   const badgeSection = $("badgeSection");
   if (od.life >= 0) {
     badgeSection.style.display = "block";
-    $("badgeSvgWrap").innerHTML = makeBadgeSvg(antag, 110);
+    $("badgeSvgWrap").innerHTML = makeBadgeSvg(antag, 64);
     $("badgeNm").textContent    = antag;
     $("badgeSb").textContent    = od.emoji+" "+outcome;
   } else { badgeSection.style.display = "none"; }
@@ -243,10 +243,13 @@ function _rarityLabel(r) {
 
 // ── COLLECTION ────────────────────────────────────────────────
 /**
- * @description Reconstruit le tableau des victoires (grille de badges) dans la sidebar
- *              droite à partir de G.badges. Ne fait rien tant qu'aucun badge n'a été
- *              gagné. Chaque badge est cliquable et ouvre l'historique de combats
- *              (victoires/nuls/défaites) contre cet antagoniste (voir
+ * @description Reconstruit l'historique des combats (une ligne compacte par combat mené,
+ *              victoire/nul/défaite confondus — voir G.badges dans engine.js →
+ *              applyOutcome()) dans la sidebar droite. Ne fait rien tant qu'aucun combat
+ *              n'a encore eu lieu. Chaque ligne montre le portrait de l'antagoniste (ou,
+ *              à défaut de portrait connu, son badge procédural, réduit), son nom et le
+ *              résultat, sur une seule ligne ; cliquer une ligne ouvre l'historique
+ *              cumulé (victoires/nuls/défaites) contre cet antagoniste (voir
  *              openAntagHistory()).
  *
  * @sideEffects
@@ -258,21 +261,30 @@ function updateCollection() {
 
   const sec = $("collSection");
   sec.classList.add("show");
-  $("collSub").textContent = G.badges.length + " ennemi" + (G.badges.length > 1 ? "s" : "") + " vaincu" + (G.badges.length > 1 ? "s" : "");
+  $("collSub").textContent = G.badges.length + " combat" + (G.badges.length > 1 ? "s" : "") + " mené" + (G.badges.length > 1 ? "s" : "");
 
   const grid = $("collGrid");
   grid.textContent = "";
   G.badges.forEach((b, i) => {
-    const sl  = document.createElement("div"); sl.className = "bslot"; sl.style.animationDelay = (i * .05) + "s";
+    const sl  = document.createElement("div"); sl.className = "bslot"; sl.style.animationDelay = (i * .03) + "s";
     sl.tabIndex = 0;
     sl.setAttribute("role", "button");
     sl.setAttribute("aria-label", "Voir l'historique de combats contre " + b.antag);
-    const sw  = document.createElement("div");
-    // SÉCURITÉ : SVG depuis makeBadgeSvg — constantes + hash uniquement
-    sw.innerHTML = makeBadgeSvg(b.antag, 84);
-    const nm  = document.createElement("div"); nm.className = "bslot-nm";  nm.textContent = b.antag;
-    const out = document.createElement("div"); out.className = "bslot-out " + b.outcomeCls; out.textContent = b.emoji + " " + b.outcomeShort;
-    sl.appendChild(sw); sl.appendChild(nm); sl.appendChild(out);
+
+    const imgWrap = document.createElement("span"); imgWrap.className = "bslot-img-wrap";
+    if (b.portrait) {
+      const img = document.createElement("img");
+      img.className = "bslot-img"; img.src = b.portrait; img.alt = "";
+      imgWrap.appendChild(img);
+    } else {
+      // SÉCURITÉ : SVG depuis makeBadgeSvg — constantes + hash uniquement
+      imgWrap.innerHTML = makeBadgeSvg(b.antag, 32);
+    }
+
+    const nm  = document.createElement("span"); nm.className = "bslot-nm";  nm.textContent = b.antag;
+    const out = document.createElement("span"); out.className = "bslot-out " + b.outcomeCls; out.textContent = b.emoji + " " + b.outcomeShort;
+
+    sl.appendChild(imgWrap); sl.appendChild(nm); sl.appendChild(out);
     sl.addEventListener("click", () => openAntagHistory(b.antag));
     sl.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openAntagHistory(b.antag); } });
     grid.appendChild(sl);
@@ -361,3 +373,4 @@ function showHealNotice() {
   $("arenaBox").appendChild(el);
   setTimeout(() => el.remove(), 5000);
 }
+

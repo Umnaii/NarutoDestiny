@@ -90,16 +90,27 @@ const HEART_SVG_EMPTY = `<svg viewBox="0 0 28 28" fill="none" xmlns="http://www.
 /**
  * @description Rafraîchit la zone rang du HUD : nom et couleur du rang courant, emblème
  *              SVG, compteur de victoires vers le prochain examen, nom du rang suivant,
- *              et anime la barre de progression vers sa nouvelle valeur.
+ *              et anime la barre de progression vers sa nouvelle valeur. En mode défense
+ *              de Kage (G.kageDefense), la progression de rang n'a plus de sens (rang
+ *              déjà maximal) — elle est remplacée par le compteur de vagues repoussées.
  *
  * @sideEffects
  *   Modifie #rankNameHUD, #rankFillHUD, #rankEmblemHUD, #rankWinsC, #rankWinsM,
- *   #rankNextN, et déclenche l'animation animFill()
+ *   #rankNextN, #kageWaveCount, l'affichage de #hudRankNormal/#hudKageDefense, et
+ *   déclenche l'animation animFill()
  */
 function updateRankHUD() {
   const rank = Engine.currentRank();
   const next = Engine.nextRank();
   const G    = Engine.getState();
+
+  $("hudRankNormal").style.display   = G.kageDefense ? "none" : "flex";
+  $("hudKageDefense").style.display  = G.kageDefense ? "flex" : "none";
+
+  if (G.kageDefense) {
+    $("kageWaveCount").textContent = G.kageDefenseKills;
+    return;
+  }
 
   $("rankNameHUD").textContent  = rank.name;
   $("rankNameHUD").style.color  = rank.color;
