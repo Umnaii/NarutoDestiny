@@ -2,7 +2,8 @@
  * @file ui-round.js
  * @module ui/round
  * @description Construction et pilotage du round : empilement des roues, spin séquentiel,
- *              application des résultats de combat/examen.
+ *              application des résultats de combat/examen, fuite de combat (objet
+ *              "skip_fight") et vagues sans fin du mode défense de Kage.
  *              Extrait de ui.js lors du refactoring Phase 1.
  *
  * @dependencies
@@ -10,10 +11,12 @@
  *   - ../engine.js → Engine.getState(), Engine.newRound(), Engine.computeIssueWeights(),
  *                    Engine.computeExamenWeights(), Engine.buildLootPool(), Engine.getStarters(),
  *                    Engine.getAntags(), Engine.setResult(), Engine.getPersoStyle(), Engine.setPerso(),
- *                    Engine.applyOutcome(), Engine.applyExamen(), Engine.isManualUseItem()
+ *                    Engine.applyOutcome(), Engine.applyExamen(), Engine.isManualUseItem(),
+ *                    Engine.useSkipFight(), Engine.recordKageWave()
  *   - ../wheel.js  → WheelEngine.SZ, WheelEngine.draw(), WheelEngine.drawLoot(),
  *                    WheelEngine.spinIssue(), WheelEngine.spinLoot(), WheelEngine.spinGeneric()
  *   - ui-core.js   → $()
+ *   - ui-audio.js  → playTickSound(), playResultSound(kind), playLootSound()
  *   - ui-hud.js    → updateHUD(), updatePersoPortrait()
  *   - ui-inventory.js → updateInventoryBar(), showManualUseTutorial()
  *   - ui-recap.js  → showCombatAnalysis(), showExamenAnalysis(), showRoundSummary(),
@@ -22,7 +25,8 @@
  *
  * @exports (fonctions globales)
  *   - buildSteps(), buildRound(), spinCurrent(), applyIssue(outcomeIdx),
- *     showStepResult(label, value, cls), nextRound()
+ *     showStepResult(label, value, cls), nextRound(), updateFleeButtonVisibility(),
+ *     fleeCombat(), continueKageDefense()
  */
 
 // ── ROUND BUILDER ─────────────────────────────────────────────
@@ -35,9 +39,13 @@
  * @description Calcule la séquence des étapes (roues) du round courant. La roue
  *              "Personnage" n'est incluse que si aucun personnage n'est encore fixé
  *              (premier round de la partie) ; "Antagoniste", "Combat" et "Butin" sont
- *              toujours présentes ; la roue "Examen" est toujours ajoutée en dernier et
- *              sera sautée à l'exécution si G.examReady est resté false après le loot
- *              (voir spinCurrent()).
+ *              toujours présentes — y compris en mode défense de Kage (G.kageDefense),
+ *              où la roue Butin garde exactement 25% de chances de tomber sur un objet
+ *              (voir Engine.buildKageLootPool()), le reste (75%) tombant sur "Rien". En
+ *              mode défense de Kage, le round s'arrête là (pas d'Examen, rang déjà
+ *              maximal) ; sinon, "Examen" est ajoutée en dernier — elle sera sautée à
+ *              l'exécution si G.examReady est resté false après le loot (voir
+ *              spinCurrent()).
  *
  * @returns {Object[]} Liste ordonnée d'étapes `{ id, label, canvasId, pal }` où `pal`
  *                     encode le type de roue : index de palette (>=0, roues génériques
@@ -54,8 +62,11 @@ function buildSteps() {
   steps.push({ id:"antag",  label:"Antagoniste", canvasId:"cvAntag", pal:1 });
   steps.push({ id:"issue",  label:"Combat",      canvasId:"cvIssue", pal:-1 });
   steps.push({ id:"loot",   label:"Butin",       canvasId:"cvLoot",  pal:-2 });
-  // La roue examen est toujours ajoutée — elle sera sautée si !examReady après loot
-  steps.push({ id:"examen", label:"Examen",      canvasId:"cvExamen",pal:-3 });
+
+  if (!G.kageDefense) {
+    // La roue examen est toujours ajoutée — elle sera sautée si !examReady après loot
+    steps.push({ id:"examen", label:"Examen",      canvasId:"cvExamen",pal:-3 });
+  }
 
   return steps;
 }
@@ -120,14 +131,16 @@ function buildRound() {
 
   Engine.newRound();
   updateAntagPortrait(); // masqué : le round qui commence n'a pas encore d'adversaire tiré
+  updateFleeButtonVisibility();
 }
 
 /**
  * @description Dessine l'état initial (rotation 0) de la roue à l'étape donnée, avec
  *              la logique adaptée à son type : poids de combat calculés pour "Combat",
- *              tirage d'un nouveau pool pour "Butin", poids d'examen calculés pour
- *              "Examen", ou candidats à parts égales pour les roues génériques
- *              (personnage/antagoniste).
+ *              tirage d'un nouveau pool pour "Butin" (pool réduit avec un "Rien" à 75%
+ *              de chances en mode défense de Kage — voir Engine.buildKageLootPool()),
+ *              poids d'examen calculés pour "Examen", ou candidats à parts égales pour
+ *              les roues génériques (personnage/antagoniste).
  *
  * @param {number} stepIdx - Index de l'étape dans _STEPS à dessiner
  *
@@ -145,7 +158,7 @@ function _initWheelDraw(stepIdx) {
     const w       = weights.map(w => w.weight);
     WheelEngine.draw(step.canvasId, items, colors, 0, w);
   } else if (step.pal === -2) {
-    _lootPool = Engine.buildLootPool(8);
+    _lootPool = Engine.getState().kageDefense ? Engine.buildKageLootPool(4) : Engine.buildLootPool(8);
     WheelEngine.drawLoot(step.canvasId, _lootPool, 0);
   } else if (step.pal === -3) {
     // Roue examen — dessinée avec les poids calculés, parts proportionnelles
@@ -233,6 +246,7 @@ function transitionToNext(fromIdx, toIdx, onReady) {
   setTimeout(() => {
     to.classList.add("vis");
     $("arenaStepLabel").textContent = _STEPS[toIdx].label;
+    updateFleeButtonVisibility();
     if (onReady) onReady();
   }, 320);
 }
@@ -240,6 +254,100 @@ function transitionToNext(fromIdx, toIdx, onReady) {
 // ── SPIN ──────────────────────────────────────────────────────
 let _stepIdx  = 0;
 let _stepRots = [0, 0, 0, 0, 0];
+
+/**
+ * @description Affiche ou masque le bouton "Fuir" à côté du bouton de spin : visible
+ *              uniquement quand l'étape courante est "Combat" et que le joueur possède
+ *              un objet "skip_fight" activé (voir Engine.isManualUseItem()). Appelée
+ *              après chaque transition d'étape et après tout changement d'état "armé"
+ *              d'un objet fuite (voir ui-inventory.js).
+ *
+ * @sideEffects
+ *   Modifie l'affichage de #fleeBtn
+ */
+function updateFleeButtonVisibility() {
+  const btn = $("fleeBtn");
+  if (!btn) return;
+  const step = _STEPS[_stepIdx];
+  const G = Engine.getState();
+  const canFlee = !!step && step.id === "issue" && !G.round.spinning &&
+    G.inventory.some(it => it.effect === "skip_fight" && it.armed === true);
+  btn.style.display = canFlee ? "inline-flex" : "none";
+}
+
+/**
+ * @description Consomme un objet "skip_fight" activé pour éviter entièrement le combat
+ *              en cours : ni victoire ni défaite, aucun badge, aucune entrée dans
+ *              G.antagHistory, et pas de butin pour ce round (il n'y a pas eu de combat).
+ *              Enchaîne ensuite exactement comme si le combat avait été résolu et le
+ *              butin déjà passé : examen si prêt, sinon récapitulatif de round — ou
+ *              vague suivante en mode défense de Kage (voir continueKageDefense()).
+ *
+ * @sideEffects
+ *   Modifie l'état moteur (Engine.useSkipFight()), l'inventaire affiché, #fleeBtn,
+ *   #spinBtn, et enchaîne sur transitionToNext(), showRoundSummary() ou
+ *   continueKageDefense()
+ */
+function fleeCombat() {
+  const G = Engine.getState();
+  if (G.round.spinning) return;
+  const step = _STEPS[_stepIdx];
+  if (!step || step.id !== "issue") return;
+
+  const res = Engine.useSkipFight();
+  if (!res.ok) return;
+
+  updateInventoryBar();
+  showStepResult("Combat", "🏃 Combat évité — aucun butin cette fois", "loot");
+  $("fleeBtn").style.display = "none";
+
+  const btn = $("spinBtn");
+  btn.disabled = true; btn.classList.remove("going");
+
+  if (G.kageDefense) {
+    Engine.recordKageWave(); // fuir compte aussi comme une vague passée
+    setTimeout(continueKageDefense, 500);
+    return;
+  }
+
+  const prevIdx = _stepIdx;
+  if (!G.examReady) {
+    _stepIdx = _STEPS.length; // termine le round : pas d'examen ce tour-ci
+    btn.textContent = "✓ Round terminé !";
+    setTimeout(showRoundSummary, 600);
+    return;
+  }
+  const examenIdx = _STEPS.findIndex(s => s.id === "examen");
+  _stepIdx = examenIdx !== -1 ? examenIdx : _STEPS.length;
+  if (_stepIdx < _STEPS.length) {
+    transitionToNext(prevIdx, _stepIdx, () => {
+      btn.disabled = false; btn.textContent = "⚡ Tourner";
+    });
+  } else {
+    btn.textContent = "✓ Round terminé !";
+    setTimeout(showRoundSummary, 600);
+  }
+}
+
+// ── DÉFENSE DE KAGE (mode sans fin) ───────────────────────────
+/**
+ * @description Enchaîne sur la vague suivante en mode défense de Kage, une fois la vague
+ *              courante comptée (Engine.recordKageWave(), voir spinCurrent() après
+ *              Combat, et fleeCombat()) et son butin éventuel résolu (roue Butin, 25% de
+ *              chances — voir Engine.buildKageLootPool()) ou évité (fuite). Reconstruit
+ *              immédiatement l'arène pour la prochaine paire antagoniste/combat/butin
+ *              (buildSteps() n'inclut jamais l'Examen tant que G.kageDefense est vrai).
+ *
+ * @sideEffects
+ *   Réinitialise _stepIdx/_stepRots, appelle buildRound(), updateHUD(), updateInventoryBar()
+ */
+function continueKageDefense() {
+  _stepIdx  = 0;
+  _stepRots = [0, 0, 0, 0, 0];
+  buildRound(); // reconstruit antag+issue+butin (buildSteps() omet l'examen en mode défense)
+  updateHUD();
+  updateInventoryBar();
+}
 
 /**
  * @description Pilote le spin de la roue de l'étape courante (_stepIdx) : choisit la
@@ -261,6 +369,7 @@ function spinCurrent() {
   const G = Engine.getState();
   if (G.round.spinning) return;
   G.round.spinning = true;
+  updateFleeButtonVisibility(); // masqué pendant que la roue tourne
 
   const step = _STEPS[_stepIdx];
   const btn  = $("spinBtn");
@@ -277,12 +386,14 @@ function spinCurrent() {
       startRotation: _stepRots[_stepIdx],
       weights,
       onFrame: r => { _stepRots[_stepIdx] = r; },
+      onTick: playTickSound,
     }).then(({ targetIndex, finalRotation }) => {
       _stepRots[_stepIdx] = finalRotation;
       const outcome = EXAMEN_OUTCOMES[targetIndex];
       Engine.setResult("examen", outcome.short);
       Engine.setResult("examenIdx", targetIndex);
       showStepResult(step.label, outcome.short, targetIndex === 1 ? "defeat" : "");
+      playResultSound(targetIndex === 0 ? "win" : "loss");
     });
 
   } else if (step.pal === -1) {
@@ -294,29 +405,38 @@ function spinCurrent() {
       startRotation: _stepRots[_stepIdx],
       weights,
       onFrame: r => { _stepRots[_stepIdx] = r; },
+      onTick: playTickSound,
     }).then(({ targetIndex, finalRotation }) => {
       _stepRots[_stepIdx] = finalRotation;
       const outcome = OUTCOMES[targetIndex];
       Engine.setResult("outcome", outcome.short);
       Engine.setResult("outcomeIdx", targetIndex);
       showStepResult(step.label, outcome.short, outcome.life < 0 ? "defeat" : "");
+      playResultSound(targetIndex === 0 ? "win" : targetIndex === 1 ? "draw" : "loss");
     });
 
   } else if (step.pal === -2) {
-    // ── Roue Loot ─────────────────────────────────────────────
+    // ── Roue Loot (en mode défense de Kage : pool réduit avec 75% de "Rien",
+    //    voir Engine.buildKageLootPool()) ────────────────────────
     spinPromise = WheelEngine.spinLoot({
       canvasId: step.canvasId,
       pool: _lootPool,
       startRotation: _stepRots[_stepIdx],
       onFrame: r => { _stepRots[_stepIdx] = r; },
+      onTick: playTickSound,
     }).then(({ targetIndex, finalRotation, lootItem }) => {
       _stepRots[_stepIdx] = finalRotation;
       Engine.setResult("loot", lootItem);
-      Engine.addLoot(lootItem);
-      updateInventoryBar(); // le butin apparaît dans l'inventaire dès qu'il est gagné
-      showStepResult(step.label, lootItem.name, "loot");
-      if (Engine.isManualUseItem(lootItem) && !Engine.getState().seenManualUseTutorial) {
-        showManualUseTutorial(lootItem);
+      if (lootItem.effect === "none") {
+        showStepResult(step.label, lootItem.emoji + " " + lootItem.name, "");
+      } else {
+        Engine.addLoot(lootItem);
+        updateInventoryBar(); // le butin apparaît dans l'inventaire dès qu'il est gagné
+        showStepResult(step.label, lootItem.name, "loot");
+        playLootSound();
+        if (Engine.isManualUseItem(lootItem) && !Engine.getState().seenManualUseTutorial) {
+          showManualUseTutorial(lootItem);
+        }
       }
     });
 
@@ -329,6 +449,7 @@ function spinCurrent() {
       paletteIdx: step.pal,
       startRotation: _stepRots[_stepIdx],
       onFrame: r => { _stepRots[_stepIdx] = r; },
+      onTick: playTickSound,
     }).then(({ targetIndex, finalRotation }) => {
       _stepRots[_stepIdx] = finalRotation;
       const result = items[targetIndex];
@@ -354,12 +475,15 @@ function spinCurrent() {
     if (prevStep.id === "issue") {
       const combatResult = applyIssue(G.round.results.outcomeIdx);
       if (combatResult.gameOver) { setTimeout(showGameOver, 900); return; }
-      _lootPool = Engine.buildLootPool(8);
+      // Vague comptée dès qu'elle est survécue, avant même de savoir si la roue Butin
+      // (25% de chances — voir Engine.buildKageLootPool()) donnera quelque chose.
+      if (G.kageDefense) Engine.recordKageWave();
     }
 
-    // Après Loot : examen si ready, sinon résumé
+    // Après Loot : vague suivante en mode défense de Kage, sinon examen si prêt, sinon résumé
     if (prevStep.id === "loot") {
       const G2 = Engine.getState();
+      if (G2.kageDefense) { setTimeout(continueKageDefense, 500); return; }
       if (!G2.examReady) {
         btn.textContent = "✓ Round terminé !"; btn.disabled = true;
         setTimeout(showRoundSummary, 600);

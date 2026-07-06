@@ -39,14 +39,36 @@
   font-weight: 500; margin-bottom: 18px;
 }
 
-/* ── COLLECTION ──
-   Positionnée en haut de la sidebar droite, au-dessus du récapitulatif. */
+/* ── VERSION COMPACTE (popup récapitulatif de round) ──
+   Réduit paddings/marges/tailles pour que le bouton "Round suivant" reste
+   atteignable sans avoir à faire défiler la popup sur un écran classique. */
+.recap-box.ov-box { padding: 28px 26px; }
+.recap-box .d-title { margin-bottom: 10px; }
+.recap-box .d-grid { gap: 8px; margin-bottom: 10px; }
+.recap-box .d-item { padding: 8px 10px; }
+.recap-box .d-val { font-size: 14.5px; }
+.recap-box .d-sub { font-size: 11px; margin-top: 1px; }
+.recap-box .d-story { padding: 8px 12px; margin-bottom: 10px; font-size: 13px; line-height: 1.45; }
+.recap-box .loot-panel { padding: 8px 12px; margin-top: 8px; }
+.recap-box .loot-panel-title { margin-bottom: 4px; }
+.recap-box .loot-item-big { font-size: 20px; margin-bottom: 2px; }
+.recap-box .loot-item-name { font-size: 13px; }
+.recap-box .loot-item-type { font-size: 11px; margin-top: 1px; }
+.recap-box .badge-rev-section { margin-top: 8px; padding-top: 8px; }
+.recap-box .badge-rev-title { margin-bottom: 6px; }
+.recap-box .badge-rev-name { margin-top: 4px; }
+.recap-box .btn-next-round { margin-top: 10px; }
+
+/* ── HISTORIQUE DES COMBATS ──
+   Positionné en haut de la sidebar droite, sous le portrait de l'adversaire — marge
+   haute généreuse pour bien le distinguer de ce dernier (voir .portrait-box). */
 .coll {
   display: none;
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 18px;
-  padding: 20px 22px;
+  padding: 16px 18px;
+  margin-top: 20px;
   margin-bottom: 20px;
   flex-shrink: 0;
 }
@@ -57,19 +79,35 @@
   color: var(--orange); text-transform: uppercase;
   text-align: center; margin-bottom: 5px;
 }
-.coll-sub { text-align: center; font-size: 14px; color: var(--text-muted); margin-bottom: 20px; }
-.badges-grid { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; }
+.coll-sub { text-align: center; font-size: 13px; color: var(--text-muted); margin-bottom: 12px; }
+
+/* Liste compacte : une ligne par combat (portrait/badge réduit + nom + résultat) */
+.badges-grid { display: flex; flex-direction: column; gap: 4px; }
 .bslot {
-  width: 96px; text-align: center; animation: slin .5s cubic-bezier(.34,1.26,.64,1) both;
-  cursor: pointer; border-radius: 10px; padding: 4px; transition: background .2s;
+  display: flex; align-items: center; gap: 10px;
+  text-align: left; animation: slin .35s cubic-bezier(.34,1.26,.64,1) both;
+  cursor: pointer; border-radius: 8px; padding: 5px 8px; transition: background .2s;
 }
 .bslot:hover, .bslot:focus-visible { background: rgba(255,255,255,.06); outline: none; }
 @keyframes slin {
-  from { opacity: 0; transform: translateY(16px); }
+  from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.bslot-nm { font-size: 11px; color: var(--text-muted); margin-top: 7px; font-weight: 600; line-height: 1.3; }
-.bslot-out { font-size: 11px; margin-top: 2px; font-weight: 700; }
+.bslot-img-wrap {
+  flex-shrink: 0; width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+}
+.bslot-img-wrap svg { width: 28px; height: 28px; }
+.bslot-img {
+  width: 28px; height: 28px; border-radius: 6px;
+  object-fit: cover; object-position: top center;
+  border: 1px solid var(--border-gold);
+}
+.bslot-nm {
+  font-size: 12.5px; color: var(--text); font-weight: 600;
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.bslot-out { font-size: 11.5px; font-weight: 700; flex-shrink: 0; }
 .out-v { color: var(--green); }
 .out-h { color: var(--gold); }
 .out-d { color: var(--blue); }
