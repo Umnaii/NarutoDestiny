@@ -227,36 +227,6 @@ const WheelEngine = (() => {
   }
 
   /**
-   * @description Détermine l'index du segment actuellement aligné avec le pointeur fixe
-   *              (en haut, -π/2) pour un angle de rotation donné — même répartition
-   *              angulaire que draw()/_targetBaseAngle(), afin de rester cohérent avec ce
-   *              qui est visuellement affiché. Utilisé par les fonctions spin*() pour
-   *              détecter les changements de segment sous le pointeur pendant l'animation
-   *              (voir le paramètre `onTick` de spin()/spinIssue()/spinLoot()) et
-   *              déclencher un tic sonore synchronisé.
-   *
-   * @param {number[]} weights  - Poids relatif de chaque segment
-   * @param {number}   rotation - Angle de rotation courant, en radians
-   *
-   * @returns {number} Index du segment sous le pointeur (-1 si `weights` est vide)
-   */
-  function _segmentAtPointer(weights, rotation) {
-    const n = weights.length;
-    if (!n) return -1;
-    const total = weights.reduce((s, x) => s + x, 0) || 1;
-    const TWO_PI = Math.PI * 2;
-    let local = (-Math.PI / 2 - rotation) % TWO_PI;
-    if (local < 0) local += TWO_PI;
-    let cum = 0;
-    for (let i = 0; i < n; i++) {
-      const arc = (weights[i] / total) * TWO_PI;
-      if (local < cum + arc) return i;
-      cum += arc;
-    }
-    return n - 1;
-  }
-
-  /**
    * @description Anime le spin d'une roue à segments égaux (utilisée pour les roues
    *              "générique" : personnage, antagoniste) : tire un index cible aléatoire,
    *              calcule une rotation finale (angle cible + 6 à 10 tours complets), puis
