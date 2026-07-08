@@ -385,7 +385,7 @@ au moment de l'exécution (pas de vérification à l'import comme avec de vrais 
    `Engine.isManualUseItem()` — il sera alors mis en avant dans la barre d'inventaire
    (badge 🥷) et déclenchera le tutoriel la première fois qu'il est obtenu
 4. Si l'objet est **consommable** (peut être ramassé plusieurs fois, s'empile via
-   `connt`), l'ajouter à la logique de `_isConsumableItem()` dans `engine.js` — sinon il
+   `count`), l'ajouter à la logique de `_isConsumableItem()` dans `engine.js` — sinon il
    sera traité comme un objet permanent unique (dupliqué, jamais ré-obtenu ensuite)
 
 ### Modifier la logique de progression de rang ou la difficulté de l'examen
