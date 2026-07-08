@@ -786,13 +786,19 @@ const Engine = (() => {
    *              (soin, chance, boost, fuite) restent tirables même si le joueur en
    *              possède déjà (voir addLoot() pour l'empilement en quantité).
    *
-   *              Le butin dépend de l'issue du combat de ce round (voir `guaranteed`) :
-   *              une victoire nette garantit un objet ; un match nul ou une défaite
-   *              (survécue grâce à un talisman/soin) ne laisse que 40% de chances d'en
-   *              obtenir un — un objet fictif "Rien cette fois" est alors ajouté au pool,
-   *              avec un poids calculé pour occuper exactement 60% de la roue (les objets
-   *              réels se partagent les 40% restants, proportionnellement à leur rareté
-   *              comme d'habitude).
+   *              Cette fonction gère les chances de butin du jeu NORMAL (avant le rang
+   *              Kage) : le butin dépend de l'issue du combat de ce round (voir
+   *              `guaranteed`) — une victoire nette garantit un objet ; un match nul ou
+   *              une défaite (survécue grâce à un talisman/soin) ne laisse que 40% de
+   *              chances d'en obtenir un, via un objet fictif "Rien cette fois" ajouté au
+   *              pool avec un poids calculé pour occuper exactement 60% de la roue (les
+   *              objets réels se partagent les 40% restants, proportionnellement à leur
+   *              rareté comme d'habitude). Une fois le rang Kage atteint, c'est
+   *              kage-loot.js → KageLoot.buildPool() qui prend le relais avec ses PROPRES
+   *              chances (25% victoire / 15% défaite survécue / 0% match nul, volontairement
+   *              tenues à l'écart d'ici pour ne jamais confondre les deux systèmes) — cette
+   *              fonction lui sert alors uniquement à tirer les objets réels du pool, en
+   *              l'appelant toujours avec `guaranteed:true` (le "Rien" y est géré à part).
    *
    * @param {number}  [size=8]          - Nombre d'objets réels à inclure dans le pool
    * @param {boolean} [guaranteed=true] - true si le combat de ce round est une victoire

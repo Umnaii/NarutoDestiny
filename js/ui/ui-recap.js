@@ -3,8 +3,8 @@
  * @module ui/recap
  * @description Récapitulatif de round, analyses combat/examen, échec d'examen,
  *              collection de badges (cliquable pour ouvrir l'historique
- *              victoires/nuls/défaites d'un antagoniste), notices chance/soin, portrait
- *              de l'adversaire du round en cours (voir engine.js → getPortrait()).
+ *              victoires/nuls/défaites d'un antagoniste), notices chance/soin/sauvegarde,
+ *              portrait de l'adversaire du round en cours (voir engine.js → getPortrait()).
  *              Extrait de ui.js lors du refactoring Phase 1.
  *
  * @dependencies
@@ -17,7 +17,7 @@
  * @exports (fonctions globales)
  *   - showRoundSummary(), showExamenAnalysis(weights), showExamFailure(),
  *     _typeLabel(t), _rarityLabel(r), updateCollection(),
- *     showCombatAnalysis(weights), showChanceNotice(), showHealNotice(),
+ *     showCombatAnalysis(weights), showChanceNotice(), showHealNotice(), showSaveNotice(),
  *     updateAntagPortrait(), openAntagHistory(name), closeAntagHistory()
  */
 
@@ -343,7 +343,7 @@ function showCombatAnalysis(weights) {
   lbl.appendChild(line1); lbl.appendChild(line2); lbl.appendChild(line3);
 }
 
-// ── CHANCE / HEAL NOTICES ─────────────────────────────────────
+// ── CHANCE / HEAL / SAUVEGARDE NOTICES ────────────────────────
 /**
  * @description Affiche une notice temporaire (5s) confirmant qu'un talisman "chance" a
  *              automatiquement annulé une défaite.
@@ -372,5 +372,22 @@ function showHealNotice() {
   el.textContent = "💊 Soin utilisé automatiquement — une vie récupérée !";
   $("arenaBox").appendChild(el);
   setTimeout(() => el.remove(), 5000);
+}
+
+/**
+ * @description Affiche une notice temporaire (2.5s) confirmant qu'une sauvegarde
+ *              manuelle vient d'être effectuée (voir ui-round.js → manualSaveGame()).
+ *              Plus courte que les notices chance/soin : une simple confirmation
+ *              d'action volontaire n'a pas besoin de rester affichée aussi longtemps.
+ *
+ * @sideEffects
+ *   Ajoute un élément à #arenaBox, le retire après 2500ms
+ */
+function showSaveNotice() {
+  const el = document.createElement("div");
+  el.className = "save-notice";
+  el.textContent = "💾 Partie sauvegardée !";
+  $("arenaBox").appendChild(el);
+  setTimeout(() => el.remove(), 2500);
 }
 

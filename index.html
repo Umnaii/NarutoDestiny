@@ -64,7 +64,13 @@
       Commencer l'aventure →
     </button>
 
-    <button class="btn-ghost" style="margin-top:18px" onclick="openScoreboard()">🏆 Voir le classement</button>
+    <!-- Reprise d'une partie sauvegardée : discrète, sous le bouton principal — visible
+         uniquement si une sauvegarde existe (voir ui-village.js → updateResumeButton()) -->
+    <button class="btn-ghost" style="margin-top:18px;display:none" id="resumeBtn" onclick="resumeSavedGame()" aria-label="Reprendre la partie sauvegardée">
+      💾 Reprendre la partie en cours
+    </button>
+
+    <button class="btn-ghost" style="margin-top:10px" onclick="openScoreboard()">🏆 Voir le classement</button>
     <button class="btn-ghost" style="margin-top:10px" id="soundToggleBtnVillage" onclick="toggleSoundButton()">🔊 Son activé</button>
 
   </div>
@@ -146,6 +152,7 @@
           </div>
         </div>
 
+        <button class="btn-ghost" onclick="manualSaveGame()">💾 Sauvegarder</button>
         <button class="btn-ghost" onclick="openScoreboard()">🏆 Classement</button>
         <button class="btn-ghost" id="soundToggleBtnGame" onclick="toggleSoundButton()">🔊 Son activé</button>
         <button class="btn-ghost sidebar-restart" onclick="confirmRestart()">↺ Recommencer une partie</button>
@@ -346,6 +353,8 @@
 <script src="js/data.js"></script>
 <!-- Moteur de jeu (état, règles) — dépend de data.js -->
 <script src="js/engine.js"></script>
+<!-- Règles de butin DÉDIÉES au mode défense de Kage (25%/15%/0%) — dépend de data.js, engine.js -->
+<script src="js/kage-loot.js"></script>
 <!-- Moteur de dessin des roues — dépend de data.js -->
 <script src="js/wheel.js"></script>
 <!-- UI — dépend de data.js, engine.js, wheel.js -->

@@ -13,6 +13,8 @@
  *                    Engine.getAntags(), Engine.setResult(), Engine.getPersoStyle(), Engine.setPerso(),
  *                    Engine.applyOutcome(), Engine.applyExamen(), Engine.isManualUseItem(),
  *                    Engine.useSkipFight(), Engine.recordKageWave(), Engine.saveGame()
+ *   - ../kage-loot.js → KageLoot.buildPool() — règles de butin DÉDIÉES au mode défense
+ *                    de Kage (25%/15%/0%), séparées de Engine.buildLootPool() (butin normal)
  *   - ../wheel.js  → WheelEngine.SZ, WheelEngine.draw(), WheelEngine.drawLoot(),
  *                    WheelEngine.spinIssue(), WheelEngine.spinLoot(), WheelEngine.spinGeneric()
  *   - ui-core.js   → $()
@@ -20,13 +22,13 @@
  *   - ui-hud.js    → updateHUD(), updatePersoPortrait()
  *   - ui-inventory.js → updateInventoryBar(), showManualUseTutorial()
  *   - ui-recap.js  → showCombatAnalysis(), showExamenAnalysis(), showRoundSummary(),
- *                    updateAntagPortrait(), updateCollection()
+ *                    updateAntagPortrait(), updateCollection(), showSaveNotice()
  *   - ui-overlays.js → showVictory(), showPromotion(), showExamFailure() [showExamFailure vit dans ui-recap.js]
  *
  * @exports (fonctions globales)
  *   - buildSteps(), buildRound(), spinCurrent(), applyIssue(outcomeIdx),
  *     showStepResult(label, value, cls), nextRound(), updateFleeButtonVisibility(),
- *     fleeCombat(), continueKageDefense()
+ *     fleeCombat(), continueKageDefense(), manualSaveGame()
  */
 
 // ── ROUND BUILDER ─────────────────────────────────────────────
@@ -40,11 +42,12 @@
  *              "Personnage" n'est incluse que si aucun personnage n'est encore fixé
  *              (premier round de la partie) ; "Antagoniste", "Combat" et "Butin" sont
  *              toujours présentes — y compris en mode défense de Kage (G.kageDefense).
- *              La roue Butin dépend de l'issue du combat de ce round (voir
- *              Engine.buildLootPool()) : butin garanti sur victoire nette, 40% de
- *              chances seulement sur match nul/défaite survécue (le reste tombant sur
- *              "Rien"), qu'on soit ou non en mode défense de Kage. En mode défense de
- *              Kage, le round s'arrête là (pas d'Examen, rang déjà
+ *              La roue Butin dépend de l'issue du combat de ce round, avec deux règles
+ *              bien distinctes : butin normal (voir Engine.buildLootPool()) — garanti
+ *              sur victoire nette, 40% de chances sinon — hors mode défense de Kage ; une
+ *              fois Kage (voir KageLoot.buildPool()), 25% de chances sur victoire, 15%
+ *              sur défaite survécue, 0% sur match nul. En mode défense de Kage, le round
+ *              s'arrête là (pas d'Examen, rang déjà
  *              maximal) ; sinon, "Examen" est ajoutée en dernier — elle sera sautée à
  *              l'exécution si G.examReady est resté false après le loot (voir
  *              spinCurrent()).
@@ -139,11 +142,13 @@ function buildRound() {
 /**
  * @description Dessine l'état initial (rotation 0) de la roue à l'étape donnée, avec
  *              la logique adaptée à son type : poids de combat calculés pour "Combat",
- *              tirage d'un nouveau pool pour "Butin" (butin garanti si le combat de ce
- *              round est une victoire nette, 40% de chances sinon — voir
- *              Engine.buildLootPool() ; pool réduit à 4 objets réels en mode défense de
- *              Kage, 8 sinon), poids d'examen calculés pour "Examen", ou candidats à
- *              parts égales pour les roues génériques (personnage/antagoniste).
+ *              tirage d'un nouveau pool pour "Butin" — deux systèmes bien distincts,
+ *              volontairement séparés pour ne jamais les confondre : butin normal (voir
+ *              Engine.buildLootPool()), garanti sur victoire nette et 40% de chances
+ *              sinon ; ou, une fois Kage, butin dédié au mode défense (voir
+ *              KageLoot.buildPool()), 25% de chances sur victoire, 15% sur défaite
+ *              survécue, 0% sur match nul — poids d'examen calculés pour "Examen", ou
+ *              candidats à parts égales pour les roues génériques (personnage/antagoniste).
  *
  * @param {number} stepIdx - Index de l'étape dans _STEPS à dessiner
  *
@@ -161,9 +166,11 @@ function _initWheelDraw(stepIdx) {
     const w       = weights.map(w => w.weight);
     WheelEngine.draw(step.canvasId, items, colors, 0, w);
   } else if (step.pal === -2) {
-    const G2  = Engine.getState();
-    const won = G2.round.results.outcomeIdx === 0; // victoire nette du combat de ce round
-    _lootPool = Engine.buildLootPool(G2.kageDefense ? 4 : 8, won);
+    const G2 = Engine.getState();
+    const outcomeIdx = G2.round.results.outcomeIdx;
+    _lootPool = G2.kageDefense
+      ? KageLoot.buildPool(4, outcomeIdx)               // règles dédiées : 25%/15%/0%
+      : Engine.buildLootPool(8, outcomeIdx === 0);      // butin normal : garanti/40%
     WheelEngine.drawLoot(step.canvasId, _lootPool, 0);
   } else if (step.pal === -3) {
     // Roue examen — dessinée avec les poids calculés, parts proportionnelles
@@ -339,8 +346,9 @@ function fleeCombat() {
  * @description Enchaîne sur la vague suivante en mode défense de Kage, une fois la vague
  *              courante comptée si elle a été gagnée nettement (Engine.recordKageWave(),
  *              voir spinCurrent() après Combat, et fleeCombat()) et son butin éventuel
- *              résolu (roue Butin — garanti sur victoire, 40% de chances sinon, voir
- *              Engine.buildLootPool()) ou évité (fuite). Reconstruit immédiatement
+ *              résolu (roue Butin — règles dédiées au mode défense de Kage, voir
+ *              KageLoot.buildPool() : 25% de chances sur victoire, 15% sur défaite
+ *              survécue, 0% sur match nul) ou évité (fuite). Reconstruit immédiatement
  *              l'arène pour la prochaine paire antagoniste/combat/butin (buildSteps()
  *              n'inclut jamais l'Examen tant que G.kageDefense est vrai).
  *
@@ -424,8 +432,9 @@ function spinCurrent() {
     });
 
   } else if (step.pal === -2) {
-    // ── Roue Loot (butin garanti sur victoire nette, 40% de chances sinon — le pool
-    //    a déjà été tiré en conséquence dans _initWheelDraw(), voir Engine.buildLootPool()) ──
+    // ── Roue Loot (pool déjà tiré selon la règle applicable dans _initWheelDraw() :
+    //    butin normal — Engine.buildLootPool() — ou, une fois Kage, règles dédiées au
+    //    mode défense — KageLoot.buildPool()) ────────────────────
     spinPromise = WheelEngine.spinLoot({
       canvasId: step.canvasId,
       pool: _lootPool,
@@ -601,4 +610,24 @@ function nextRound() {
   updateHUD();
   updateInventoryBar();
   Engine.saveGame();
+}
+
+// ── SAUVEGARDE MANUELLE ───────────────────────────────────────
+/**
+ * @description Sauvegarde immédiatement la partie en cours, à la demande du joueur (voir
+ *              index.html → bouton "💾 Sauvegarder" de la sidebar gauche en jeu), sans
+ *              attendre la prochaine limite propre de round. Sans danger même en cours
+ *              de spin : reprendre une partie (voir ui-village.js → resumeSavedGame())
+ *              reconstruit toujours le round en cours depuis zéro via buildRound() →
+ *              Engine.newRound(), qui ne préserve que les champs persistants (village,
+ *              personnage, inventaire, vies, rang, historique…) déjà à jour en temps
+ *              réel dans `G` à ce moment précis — jamais l'état précis d'un tirage en
+ *              suspens, qui n'est de toute façon pas sauvegardé.
+ *
+ * @sideEffects
+ *   Appelle Engine.saveGame(), affiche une notice de confirmation (showSaveNotice())
+ */
+function manualSaveGame() {
+  Engine.saveGame();
+  showSaveNotice();
 }

@@ -449,12 +449,15 @@ const CHARACTER_PORTRAITS = {
  *                              possédés, ils disparaissent du pool de butin pour le
  *                              reste de la partie (voir engine.js → buildLootPool()).
  * @property {number} [forcedWeight] - Réservé à l'objet fictif "Rien cette fois", ajouté
- *                              par engine.js → buildLootPool() quand le combat de ce
- *                              round n'est pas une victoire nette (match nul ou défaite
- *                              survécue — butin réduit à 40% de chances) : poids
- *                              explicite de la roue Butin, prioritaire sur le poids par
- *                              rareté (voir wheel.js → getLootWheelData()). Absent de
- *                              tous les objets réels de LOOT_POOL.
+ *                              soit par engine.js → buildLootPool() (butin normal — quand
+ *                              le combat de ce round n'est pas une victoire nette, 40% de
+ *                              chances de butin), soit par kage-loot.js →
+ *                              KageLoot.buildPool() une fois le rang Kage atteint (règles
+ *                              dédiées, 25%/15%/0% — voir ce fichier, à ne pas confondre
+ *                              avec le butin normal) : poids explicite de la roue Butin,
+ *                              prioritaire sur le poids par rareté (voir wheel.js →
+ *                              getLootWheelData()). Absent de tous les objets réels de
+ *                              LOOT_POOL.
  */
 const LOOT_POOL = [
   // ── ARMES ──

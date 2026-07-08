@@ -14,7 +14,10 @@
   border-radius: 18px;
   padding: 22px 24px;
   flex: 1;
-  min-height: 0;
+  /* Plancher garanti : même si le HUD/portrait au-dessus grandit, la liste conserve
+     toujours une hauteur exploitable au lieu de se réduire jusqu'à devenir une fente
+     à peine visible (ce qui donnait l'impression que de nouveaux objets "disparaissaient"). */
+  min-height: 160px;
   display: flex; flex-direction: column;
 }
 .inv-label {
@@ -23,10 +26,32 @@
   text-transform: uppercase; margin-bottom: 14px;
   flex-shrink: 0;
 }
+/* ── Barre de défilement personnalisée (thème sombre/orange du jeu) ──
+   Remplace la barre grise par défaut du navigateur, peu lisible sur fond sombre et
+   incohérente avec le reste de l'UI. Le fait qu'elle soit maintenant bien visible
+   évite aussi qu'un inventaire bien rempli ne donne l'impression que de nouveaux
+   objets sont "perdus" — ils sont toujours là, juste en dessous du fil visible. */
 .inv-items {
   display: flex; flex-direction: column; gap: 10px;
   flex: 1; min-height: 0;
   overflow-y: auto;
+  padding-right: 8px; /* place pour la barre de défilement custom, sans chevaucher le texte */
+  scrollbar-width: thin;                          /* Firefox */
+  scrollbar-color: var(--orange) var(--dark3);    /* Firefox : pouce, puis piste */
+}
+.inv-items::-webkit-scrollbar { width: 9px; }
+.inv-items::-webkit-scrollbar-track {
+  background: var(--dark3);
+  border-radius: 99px;
+  margin: 2px 0;
+}
+.inv-items::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--orange-light), var(--orange));
+  border-radius: 99px;
+  border: 1px solid rgba(0,0,0,.3);
+}
+.inv-items::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, var(--gold-light), var(--gold));
 }
 /* Liste compacte : icône + nom uniquement, le détail s'ouvre au clic (popup) —
    cliquable et surlignée au survol/focus pour signaler qu'on peut l'agrandir. */

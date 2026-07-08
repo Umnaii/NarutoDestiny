@@ -82,9 +82,10 @@ function showVictory() {
 /**
  * @description Ferme l'écran de victoire et fait entrer le joueur en mode défense de
  *              Kage (voir Engine.enterKageDefense()) : la partie ne se termine plus ici,
- *              elle continue indéfiniment (vagues d'ennemis, butin garanti sur victoire
- *              nette, 40% de chances sinon — voir Engine.buildLootPool()) jusqu'au game
- *              over. Reconstruit immédiatement l'arène pour la première vague.
+ *              elle continue indéfiniment (vagues d'ennemis, butin selon des règles
+ *              dédiées au mode défense — voir kage-loot.js → KageLoot.buildPool() : 25%
+ *              de chances sur victoire, 15% sur défaite survécue, 0% sur match nul)
+ *              jusqu'au game over. Reconstruit immédiatement l'arène pour la première vague.
  *
  * @sideEffects
  *   Retire la classe `.show` de #kageOv, appelle Engine.enterKageDefense(), réinitialise
