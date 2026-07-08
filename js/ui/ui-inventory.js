@@ -13,6 +13,7 @@
  *                    Engine.isManualUseItem(), Engine.markManualUseTutorialSeen()
  *   - ui-core.js   → $()
  *   - ui-hud.js    → updateHUD()
+ *   - ui-round.js  → updateFleeButtonVisibility()
  *
  * @exports (fonctions globales)
  *   - updateInventoryBar()
@@ -42,16 +43,20 @@ const STYLE_NOM_INV = { ninjutsu:"Ninjutsu", taijutsu:"Taijutsu", genjutsu:"Genj
 function _itemBonusText(item) {
   const G = Engine.getState();
   if (item.effect === "heal") {
-    return "💊 Restaure automatiquement 1 vie à la prochaine défaite (usage unique).";
+    return "💊 Restaure automatiquement 1 vie à la prochaine défaite (usage unique par exemplaire).";
   }
   if (item.effect === "chance") {
-    return "🎴 Annule automatiquement ta prochaine défaite (usage unique) · +20% de chances de réussite à l'examen.";
+    const n = item.count || 1;
+    return "🎴 Annule automatiquement ta prochaine défaite (usage unique par exemplaire) · +" + (20 * n) + "% de chances de réussite à l'examen.";
   }
   if (item.effect === "boost_issue") {
     return "🥷 À activer toi-même avant un combat : +25% de chances de victoire pour ce combat uniquement (usage unique — inutile si jamais activé).";
   }
   if (item.effect === "boost_examen") {
     return "🥷 À activer toi-même avant un examen : +30% de chances de réussite pour cet examen uniquement (usage unique — inutile si jamais activé).";
+  }
+  if (item.effect === "skip_fight") {
+    return "🥷 À activer toi-même avant un combat : évite entièrement ce combat (ni victoire, ni défaite, ni butin). Usage unique — inutile si jamais activé.";
   }
   if (item.type === "weapon") {
     return "+5% de chances de victoire en combat · +4% de chances de réussite à l'examen.";
@@ -72,7 +77,8 @@ function _itemBonusText(item) {
  *              clic, voir openItemUsePopup()). Un objet à activation manuelle obligatoire
  *              (voir Engine.isManualUseItem()) qui n'a pas encore été activé affiche un
  *              petit symbole 🥷 sur son icône, pour signaler qu'il ne sert à rien tant
- *              qu'on ne l'utilise pas soi-même.
+ *              qu'on ne l'utilise pas soi-même. Un objet consommable looté plusieurs fois
+ *              (voir Engine.addLoot()) affiche sa quantité ("×2", "×3"…) à côté de son nom.
  *
  * @sideEffects
  *   Remplace le contenu de #invItems ; attache un listener click/clavier sur chaque
@@ -109,7 +115,8 @@ function updateInventoryBar() {
       icoWrap.appendChild(badge);
     }
 
-    const name = document.createElement("div"); name.className = "inv-item-name"; name.textContent = item.name;
+    const name = document.createElement("div"); name.className = "inv-item-name";
+    name.textContent = item.name + ((item.count || 1) > 1 ? " ×" + item.count : "");
 
     el.appendChild(icoWrap); el.appendChild(name);
     el.addEventListener("click", () => openItemUsePopup(i));
@@ -187,6 +194,20 @@ function openItemUsePopup(idx) {
     toggleBtn.onclick = () => {
       Engine.toggleItemArmed(idx);
       updateInventoryBar();
+      closeItemUsePopup();
+    };
+    actions.appendChild(toggleBtn);
+  }
+
+  if (item.effect === "skip_fight") {
+    const armed = item.armed === true;
+    const toggleBtn = document.createElement("button");
+    toggleBtn.className = "btn-next-round";
+    toggleBtn.textContent = armed ? "✓ Activé — fuis le prochain combat" : "🥷 Activer pour fuir le prochain combat";
+    toggleBtn.onclick = () => {
+      Engine.toggleItemArmed(idx);
+      updateInventoryBar();
+      updateFleeButtonVisibility();
       closeItemUsePopup();
     };
     actions.appendChild(toggleBtn);

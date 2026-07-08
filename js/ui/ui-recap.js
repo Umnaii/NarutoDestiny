@@ -3,8 +3,8 @@
  * @module ui/recap
  * @description Récapitulatif de round, analyses combat/examen, échec d'examen,
  *              collection de badges (cliquable pour ouvrir l'historique
- *              victoires/nuls/défaites d'un antagoniste), notices chance/soin, portrait
- *              de l'adversaire du round en cours (voir engine.js → getPortrait()).
+ *              victoires/nuls/défaites d'un antagoniste), notices chance/soin/sauvegarde,
+ *              portrait de l'adversaire du round en cours (voir engine.js → getPortrait()).
  *              Extrait de ui.js lors du refactoring Phase 1.
  *
  * @dependencies
@@ -17,7 +17,7 @@
  * @exports (fonctions globales)
  *   - showRoundSummary(), showExamenAnalysis(weights), showExamFailure(),
  *     _typeLabel(t), _rarityLabel(r), updateCollection(),
- *     showCombatAnalysis(weights), showChanceNotice(), showHealNotice(),
+ *     showCombatAnalysis(weights), showChanceNotice(), showHealNotice(), showSaveNotice(),
  *     updateAntagPortrait(), openAntagHistory(name), closeAntagHistory()
  */
 
@@ -95,15 +95,16 @@ function closeAntagHistory() {
  * @description Construit et affiche le récapitulatif complet du round dans une popup
  *              plein écran : grille personnage/antagoniste/combat/butin, récit
  *              narratif, panneau de butin obtenu, badge d'ennemi vaincu (si le combat
- *              n'est pas une défaite), et rafraîchit la collection de badges. Affiché
- *              après la phase loot quand l'examen n'est pas encore disponible, ou en fin
- *              de round complet. Fermée par le bouton "⚡ Round suivant" de la popup,
- *              qui appelle nextRound() (voir ui-round.js).
+ *              n'est pas une défaite). L'historique des combats (collection de badges)
+ *              n'est pas rafraîchi ici : il l'est déjà, instantanément, dès la fin du
+ *              combat (voir ui-round.js → applyIssue()), avant même ce récapitulatif.
+ *              Affiché après la phase loot quand l'examen n'est pas encore disponible,
+ *              ou en fin de round complet. Fermée par le bouton "⚡ Round suivant" de la
+ *              popup, qui appelle nextRound() (voir ui-round.js).
  *
  * @sideEffects
  *   Affiche l'overlay #recapOv, modifie #dGrid, #dStory, #lootPanel (+ enfants),
- *   #badgeSection (+ enfants) ; remet le scroll de #recapBox en haut ;
- *   appelle updateCollection()
+ *   #badgeSection (+ enfants) ; remet le scroll de #recapBox en haut
  */
 function showRoundSummary() {
   const G = Engine.getState();
@@ -155,13 +156,12 @@ function showRoundSummary() {
   const badgeSection = $("badgeSection");
   if (od.life >= 0) {
     badgeSection.style.display = "block";
-    $("badgeSvgWrap").innerHTML = makeBadgeSvg(antag, 110);
+    $("badgeSvgWrap").innerHTML = makeBadgeSvg(antag, 64);
     $("badgeNm").textContent    = antag;
     $("badgeSb").textContent    = od.emoji+" "+outcome;
   } else { badgeSection.style.display = "none"; }
 
   box.scrollTop = 0;
-  updateCollection();
 }
 
 // ── ANALYSE EXAMEN ────────────────────────────────────────────
@@ -243,10 +243,13 @@ function _rarityLabel(r) {
 
 // ── COLLECTION ────────────────────────────────────────────────
 /**
- * @description Reconstruit le tableau des victoires (grille de badges) dans la sidebar
- *              droite à partir de G.badges. Ne fait rien tant qu'aucun badge n'a été
- *              gagné. Chaque badge est cliquable et ouvre l'historique de combats
- *              (victoires/nuls/défaites) contre cet antagoniste (voir
+ * @description Reconstruit l'historique des combats (une ligne compacte par combat mené,
+ *              victoire/nul/défaite confondus — voir G.badges dans engine.js →
+ *              applyOutcome()) dans la sidebar droite. Ne fait rien tant qu'aucun combat
+ *              n'a encore eu lieu. Chaque ligne montre le portrait de l'antagoniste (ou,
+ *              à défaut de portrait connu, son badge procédural, réduit), son nom et le
+ *              résultat, sur une seule ligne ; cliquer une ligne ouvre l'historique
+ *              cumulé (victoires/nuls/défaites) contre cet antagoniste (voir
  *              openAntagHistory()).
  *
  * @sideEffects
@@ -258,21 +261,30 @@ function updateCollection() {
 
   const sec = $("collSection");
   sec.classList.add("show");
-  $("collSub").textContent = G.badges.length + " ennemi" + (G.badges.length > 1 ? "s" : "") + " vaincu" + (G.badges.length > 1 ? "s" : "");
+  $("collSub").textContent = G.badges.length + " combat" + (G.badges.length > 1 ? "s" : "") + " mené" + (G.badges.length > 1 ? "s" : "");
 
   const grid = $("collGrid");
   grid.textContent = "";
   G.badges.forEach((b, i) => {
-    const sl  = document.createElement("div"); sl.className = "bslot"; sl.style.animationDelay = (i * .05) + "s";
+    const sl  = document.createElement("div"); sl.className = "bslot"; sl.style.animationDelay = (i * .03) + "s";
     sl.tabIndex = 0;
     sl.setAttribute("role", "button");
     sl.setAttribute("aria-label", "Voir l'historique de combats contre " + b.antag);
-    const sw  = document.createElement("div");
-    // SÉCURITÉ : SVG depuis makeBadgeSvg — constantes + hash uniquement
-    sw.innerHTML = makeBadgeSvg(b.antag, 84);
-    const nm  = document.createElement("div"); nm.className = "bslot-nm";  nm.textContent = b.antag;
-    const out = document.createElement("div"); out.className = "bslot-out " + b.outcomeCls; out.textContent = b.emoji + " " + b.outcomeShort;
-    sl.appendChild(sw); sl.appendChild(nm); sl.appendChild(out);
+
+    const imgWrap = document.createElement("span"); imgWrap.className = "bslot-img-wrap";
+    if (b.portrait) {
+      const img = document.createElement("img");
+      img.className = "bslot-img"; img.src = b.portrait; img.alt = "";
+      imgWrap.appendChild(img);
+    } else {
+      // SÉCURITÉ : SVG depuis makeBadgeSvg — constantes + hash uniquement
+      imgWrap.innerHTML = makeBadgeSvg(b.antag, 32);
+    }
+
+    const nm  = document.createElement("span"); nm.className = "bslot-nm";  nm.textContent = b.antag;
+    const out = document.createElement("span"); out.className = "bslot-out " + b.outcomeCls; out.textContent = b.emoji + " " + b.outcomeShort;
+
+    sl.appendChild(imgWrap); sl.appendChild(nm); sl.appendChild(out);
     sl.addEventListener("click", () => openAntagHistory(b.antag));
     sl.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openAntagHistory(b.antag); } });
     grid.appendChild(sl);
@@ -331,7 +343,7 @@ function showCombatAnalysis(weights) {
   lbl.appendChild(line1); lbl.appendChild(line2); lbl.appendChild(line3);
 }
 
-// ── CHANCE / HEAL NOTICES ─────────────────────────────────────
+// ── CHANCE / HEAL / SAUVEGARDE NOTICES ────────────────────────
 /**
  * @description Affiche une notice temporaire (5s) confirmant qu'un talisman "chance" a
  *              automatiquement annulé une défaite.
@@ -361,3 +373,21 @@ function showHealNotice() {
   $("arenaBox").appendChild(el);
   setTimeout(() => el.remove(), 5000);
 }
+
+/**
+ * @description Affiche une notice temporaire (2.5s) confirmant qu'une sauvegarde
+ *              manuelle vient d'être effectuée (voir ui-round.js → manualSaveGame()).
+ *              Plus courte que les notices chance/soin : une simple confirmation
+ *              d'action volontaire n'a pas besoin de rester affichée aussi longtemps.
+ *
+ * @sideEffects
+ *   Ajoute un élément à #arenaBox, le retire après 2500ms
+ */
+function showSaveNotice() {
+  const el = document.createElement("div");
+  el.className = "save-notice";
+  el.textContent = "💾 Partie sauvegardée !";
+  $("arenaBox").appendChild(el);
+  setTimeout(() => el.remove(), 2500);
+}
+

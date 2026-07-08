@@ -167,10 +167,18 @@ const WheelEngine = (() => {
 
   /**
    * @description Calcule l'angle de rotation nécessaire pour que le pointeur fixe
-   *              (en haut, -π/2) tombe pile au milieu du segment `targetIndex`, compte
+   *              (en haut, -π/2) tombe à l'intérieur du segment `targetIndex`, compte
    *              tenu des poids relatifs des segments — la même logique de répartition
    *              angulaire que draw(), pour garantir que la roue affichée coïncide avec
    *              le résultat réellement tiré.
+   *
+   *              Le point d'arrêt exact à l'intérieur du segment est tiré aléatoirement
+   *              à chaque appel plutôt que fixé à son centre géométrique : un arrêt
+   *              toujours pile au milieu, identique à chaque tirage, finit par paraître
+   *              scripté plutôt que réellement aléatoire. Une marge de sécurité
+   *              (MARGIN_RATIO) de chaque côté du segment évite que le pointeur ne
+   *              s'arrête trop près d'un bord, ce qui pourrait laisser croire qu'il
+   *              chevauche le segment voisin.
    *
    * @param {number[]} weights     - Poids relatif de chaque segment
    * @param {number}   targetIndex - Index du segment visé
@@ -179,11 +187,43 @@ const WheelEngine = (() => {
    *                   d'animation, ajoutés séparément par les fonctions spin*())
    */
   function _targetBaseAngle(weights, targetIndex) {
+    const MARGIN_RATIO = 0.18; // fraction de l'arc exclue de chaque bord (0 < x < 0.5)
     const total = weights.reduce((s, x) => s + x, 0) || 1;
     let cum = 0;
     for (let i = 0; i < targetIndex; i++) cum += (weights[i] / total) * Math.PI * 2;
     const arcSize = (weights[targetIndex] / total) * Math.PI * 2;
-    return -Math.PI / 2 - (cum + arcSize / 2);
+    const offset  = (MARGIN_RATIO + Math.random() * (1 - 2 * MARGIN_RATIO)) * arcSize;
+    return -Math.PI / 2 - (cum + offset);
+  }
+
+  /**
+   * @description Détermine l'index du segment actuellement aligné avec le pointeur fixe
+   *              (en haut, -π/2) pour un angle de rotation donné — même répartition
+   *              angulaire que draw()/_targetBaseAngle(), afin de rester cohérent avec ce
+   *              qui est visuellement affiché. Utilisé par les fonctions spin*() pour
+   *              détecter les changements de segment sous le pointeur pendant l'animation
+   *              (voir le paramètre `onTick` de spin()/spinIssue()/spinLoot()) et
+   *              déclencher un tic sonore synchronisé.
+   *
+   * @param {number[]} weights  - Poids relatif de chaque segment
+   * @param {number}   rotation - Angle de rotation courant, en radians
+   *
+   * @returns {number} Index du segment sous le pointeur (-1 si `weights` est vide)
+   */
+  function _segmentAtPointer(weights, rotation) {
+    const n = weights.length;
+    if (!n) return -1;
+    const total = weights.reduce((s, x) => s + x, 0) || 1;
+    const TWO_PI = Math.PI * 2;
+    let local = (-Math.PI / 2 - rotation) % TWO_PI;
+    if (local < 0) local += TWO_PI;
+    let cum = 0;
+    for (let i = 0; i < n; i++) {
+      const arc = (weights[i] / total) * TWO_PI;
+      if (local < cum + arc) return i;
+      cum += arc;
+    }
+    return n - 1;
   }
 
   /**
@@ -199,6 +239,11 @@ const WheelEngine = (() => {
    * @param {string[]} params.colors        - Couleurs des segments
    * @param {number}   params.startRotation - Angle de départ de l'animation, en radians
    * @param {function} [params.onFrame]     - Callback appelé à chaque frame avec l'angle courant
+   * @param {function} [params.onTick]      - Callback appelé uniquement quand le segment
+   *                                          sous le pointeur change (voir
+   *                                          _segmentAtPointer()) — sert à synchroniser un
+   *                                          tic sonore sur les changements de résultat
+   *                                          affiché, pas sur chaque frame
    *
    * @returns {Promise<Object>} Résout avec `{ targetIndex, finalRotation }` une fois
    *                            l'animation terminée
@@ -206,7 +251,7 @@ const WheelEngine = (() => {
    * @sideEffects
    *   Enchaîne des requestAnimationFrame qui redessinent le canvas #`canvasId`
    */
-  function spin({ canvasId, items, colors, startRotation, onFrame }) {
+  function spin({ canvasId, items, colors, startRotation, onFrame, onTick }) {
     return new Promise(resolve => {
       const n = items.length;
       const weights = new Array(n).fill(1); // roue générique : segments égaux
@@ -218,6 +263,7 @@ const WheelEngine = (() => {
 
       const duration = 3200 + Math.random() * 1400;
       const t0 = performance.now();
+      let lastSeg = _segmentAtPointer(weights, startRotation);
 
       function ease(t) { return 1 - Math.pow(1 - t, 4); }
 
@@ -226,6 +272,10 @@ const WheelEngine = (() => {
         const cur = startRotation + (finalRotation - startRotation) * ease(t);
         draw(canvasId, items, colors, cur, weights);
         if (onFrame) onFrame(cur);
+        if (onTick) {
+          const seg = _segmentAtPointer(weights, cur);
+          if (seg !== lastSeg) { lastSeg = seg; onTick(seg); }
+        }
         if (t < 1) {
           requestAnimationFrame(frame);
         } else {
@@ -270,13 +320,15 @@ const WheelEngine = (() => {
    * @param {Object[]} params.weights       - Résultats pondérés (`{short, wheelColor, weight}`)
    *                                          depuis Engine.computeIssueWeights()/computeExamenWeights()
    * @param {function} [params.onFrame]     - Callback appelé à chaque frame avec l'angle courant
+   * @param {function} [params.onTick]      - Callback appelé uniquement quand le segment
+   *                                          sous le pointeur change (voir spin())
    *
    * @returns {Promise<Object>} Résout avec `{ targetIndex, finalRotation }`
    *
    * @sideEffects
    *   Enchaîne des requestAnimationFrame qui redessinent le canvas #`canvasId`
    */
-  function spinIssue({ canvasId, startRotation, weights, onFrame }) {
+  function spinIssue({ canvasId, startRotation, weights, onFrame, onTick }) {
     const items  = weights.map(o => o.short);
     const colors = weights.map(o => o.wheelColor);
     const w      = weights.map(o => o.weight);
@@ -285,6 +337,7 @@ const WheelEngine = (() => {
     const finalRotation = baseAngle + (6 + Math.floor(Math.random() * 5)) * 2 * Math.PI;
     const duration = 3200 + Math.random() * 1400;
     const t0 = performance.now();
+    let lastSeg = _segmentAtPointer(w, startRotation);
     function ease(t) { return 1 - Math.pow(1 - t, 4); }
 
     return new Promise(resolve => {
@@ -293,6 +346,10 @@ const WheelEngine = (() => {
         const cur = startRotation + (finalRotation - startRotation) * ease(t);
         draw(canvasId, items, colors, cur, w);
         if (onFrame) onFrame(cur);
+        if (onTick) {
+          const seg = _segmentAtPointer(w, cur);
+          if (seg !== lastSeg) { lastSeg = seg; onTick(seg); }
+        }
         if (t < 1) { requestAnimationFrame(frame); }
         else {
           draw(canvasId, items, colors, finalRotation, w);
@@ -309,10 +366,15 @@ const WheelEngine = (() => {
    *              d'objets : libellé, couleur (choisie aléatoirement parmi les 3 teintes
    *              du type dans LOOT_WHEEL_COLORS, repli gris si type inconnu), et poids
    *              selon la rareté (RARITY_WEIGHTS) — les objets rares occupent donc
-   *              visiblement moins de place sur la roue que les communs.
+   *              visiblement moins de place sur la roue que les communs. Si un item
+   *              porte un champ `forcedWeight` (voir Engine.buildLootPool() pour le
+   *              butin normal, ou kage-loot.js → KageLoot.buildPool() une fois Kage), ce
+   *              poids explicite est utilisé à la place du poids par rareté — utile pour
+   *              un objet fictif comme "Rien cette fois" dont la part doit être calculée
+   *              précisément plutôt que dérivée d'une rareté.
    *
    * @param {Object[]} pool - Sous-ensemble de LOOT_POOL déjà filtré (voir
-   *                          Engine.buildLootPool())
+   *                          Engine.buildLootPool()/KageLoot.buildPool())
    *
    * @returns {Object[]} Un objet `{ label, color, weight }` par item du pool, dans le
    *                     même ordre
@@ -324,7 +386,7 @@ const WheelEngine = (() => {
       color: LOOT_WHEEL_COLORS[item.type]
         ? LOOT_WHEEL_COLORS[item.type][Math.floor(Math.random() * 3)]
         : "#444",
-      weight: RARITY_WEIGHTS[item.rarity],
+      weight: item.forcedWeight != null ? item.forcedWeight : RARITY_WEIGHTS[item.rarity],
     }));
   }
 
@@ -356,6 +418,8 @@ const WheelEngine = (() => {
    * @param {Object[]} params.pool          - Sous-ensemble de LOOT_POOL à faire tourner
    * @param {number}   params.startRotation - Angle de départ, en radians
    * @param {function} [params.onFrame]     - Callback appelé à chaque frame avec l'angle courant
+   * @param {function} [params.onTick]      - Callback appelé uniquement quand le segment
+   *                                          sous le pointeur change (voir spin())
    *
    * @returns {Promise<Object>} Résout avec `{ targetIndex, finalRotation, lootItem }`
    *                            où `lootItem` est l'entrée de `pool` tirée
@@ -363,7 +427,7 @@ const WheelEngine = (() => {
    * @sideEffects
    *   Enchaîne des requestAnimationFrame qui redessinent le canvas #`canvasId`
    */
-  function spinLoot({ canvasId, pool, startRotation, onFrame }) {
+  function spinLoot({ canvasId, pool, startRotation, onFrame, onTick }) {
     const data = getLootWheelData(pool);
     const items  = data.map(d => d.label);
     const colors = data.map(d => d.color);
@@ -373,6 +437,7 @@ const WheelEngine = (() => {
     const finalRotation = baseAngle + (6 + Math.floor(Math.random() * 5)) * 2 * Math.PI;
     const duration = 3000 + Math.random() * 1200;
     const t0 = performance.now();
+    let lastSeg = _segmentAtPointer(w, startRotation);
     function ease(t) { return 1 - Math.pow(1 - t, 4); }
 
     return new Promise(resolve => {
@@ -381,6 +446,10 @@ const WheelEngine = (() => {
         const cur = startRotation + (finalRotation - startRotation) * ease(t);
         draw(canvasId, items, colors, cur, w);
         if (onFrame) onFrame(cur);
+        if (onTick) {
+          const seg = _segmentAtPointer(w, cur);
+          if (seg !== lastSeg) { lastSeg = seg; onTick(seg); }
+        }
         if (t < 1) { requestAnimationFrame(frame); }
         else {
           draw(canvasId, items, colors, finalRotation, w);
@@ -422,16 +491,18 @@ const WheelEngine = (() => {
    * @param {number}   params.paletteIdx    - Index dans WHEEL_PALETTES
    * @param {number}   params.startRotation - Angle de départ, en radians
    * @param {function} [params.onFrame]     - Callback appelé à chaque frame avec l'angle courant
+   * @param {function} [params.onTick]      - Callback appelé uniquement quand le segment
+   *                                          sous le pointeur change (voir spin())
    *
    * @returns {Promise<Object>} Résout avec `{ targetIndex, finalRotation }`
    *
    * @sideEffects
    *   Enchaîne des requestAnimationFrame qui redessinent le canvas #`canvasId`
    */
-  function spinGeneric({ canvasId, items, paletteIdx, startRotation, onFrame }) {
+  function spinGeneric({ canvasId, items, paletteIdx, startRotation, onFrame, onTick }) {
     const pal = WHEEL_PALETTES[paletteIdx] || WHEEL_PALETTES[0];
     const colors = items.map((_, i) => pal[i % pal.length]);
-    return spin({ canvasId, items, colors, startRotation, onFrame });
+    return spin({ canvasId, items, colors, startRotation, onFrame, onTick });
   }
 
   return { draw, drawGeneric, spinGeneric, spinIssue, drawLoot, spinLoot, SZ };

@@ -59,6 +59,15 @@
       Commencer l'aventure →
     </button>
 
+    <!-- Reprise d'une partie sauvegardée : discrète, sous le bouton principal — visible
+         uniquement si une sauvegarde existe (voir ui-village.js → updateResumeButton()) -->
+    <button class="btn-ghost" style="margin-top:18px;display:none" id="resumeBtn" onclick="resumeSavedGame()" aria-label="Reprendre la partie sauvegardée">
+      💾 Reprendre la partie en cours
+    </button>
+
+    <button class="btn-ghost" style="margin-top:10px" onclick="openScoreboard()">🏆 Voir le classement</button>
+    <button class="btn-ghost" style="margin-top:10px" id="soundToggleBtnVillage" onclick="toggleSoundButton()">🔊 Son activé</button>
+
   </div>
 </div>
 
@@ -93,7 +102,7 @@
             <div class="lives-hearts" id="livesHearts" aria-live="polite"></div>
           </div>
 
-          <div class="hud-rank">
+          <div class="hud-rank" id="hudRankNormal">
             <div class="rank-emblem-wrap">
               <svg id="rankEmblemHUD" width="52" height="52" viewBox="0 0 52 52" aria-hidden="true"></svg>
             </div>
@@ -107,6 +116,15 @@
                 <strong id="rankWinsM">5</strong> vers
                 <span id="rankNextN">Chûnin</span>
               </div>
+            </div>
+          </div>
+
+          <!-- Mode défense de Kage : remplace la barre de progression de rang (rang déjà maximal) -->
+          <div class="hud-kage-defense" id="hudKageDefense" style="display:none">
+            <span class="kdh-icon" aria-hidden="true">🛡️</span>
+            <div class="rank-text">
+              <div class="rank-name-lbl">Défense du village</div>
+              <div class="kdh-count"><strong id="kageWaveCount">0</strong> vague(s) repoussée(s)</div>
             </div>
           </div>
 
@@ -129,6 +147,9 @@
           </div>
         </div>
 
+        <button class="btn-ghost" onclick="manualSaveGame()">💾 Sauvegarder</button>
+        <button class="btn-ghost" onclick="openScoreboard()">🏆 Classement</button>
+        <button class="btn-ghost" id="soundToggleBtnGame" onclick="toggleSoundButton()">🔊 Son activé</button>
         <button class="btn-ghost sidebar-restart" onclick="confirmRestart()">↺ Recommencer une partie</button>
 
       </aside>
@@ -153,7 +174,10 @@
                 <span class="sr-val" id="srVal">Lance la roue !</span>
               </div>
             </div>
-            <button class="btn-spin" id="spinBtn" onclick="spinCurrent()">⚡ Tourner</button>
+            <div class="ctrl-btns">
+              <button class="btn-spin" id="spinBtn" onclick="spinCurrent()">⚡ Tourner</button>
+              <button class="btn-flee" id="fleeBtn" style="display:none" onclick="fleeCombat()">🏃 Fuir (objet)</button>
+            </div>
           </div>
 
         </div>
@@ -172,9 +196,9 @@
           </div>
         </div>
 
-        <!-- Collection (tableau des victoires) -->
-        <div class="coll" id="collSection" role="region" aria-label="Collection de badges">
-          <div class="coll-title">Tableau des victoires</div>
+        <!-- Historique des combats (chaque combat, victoire/nul/défaite confondus) -->
+        <div class="coll" id="collSection" role="region" aria-label="Historique des combats">
+          <div class="coll-title">Historique des combats</div>
           <div class="coll-sub" id="collSub"></div>
           <div class="badges-grid" id="collGrid"></div>
         </div>
@@ -208,7 +232,7 @@
     <div class="ov-title gold" id="kageTtl">Tu es Kage !</div>
     <div class="ov-sub"       id="kageSub"></div>
     <svg id="kageEmb" class="ov-emblem" width="108" height="108" viewBox="0 0 108 108" aria-hidden="true"></svg>
-    <button class="kage-close btn-next-round" onclick="closeKage()">Une nouvelle ère s'ouvre →</button>
+    <button class="kage-close btn-next-round" onclick="closeKage()">🛡️ Défendre le village →</button>
   </div>
 </div>
 
@@ -228,9 +252,13 @@
   <div class="ov-box ov-border-red">
     <span class="gameover-skull" aria-hidden="true">💀</span>
     <div class="ov-title red" id="goTitle">Ton chemin de ninja s'arrête ici</div>
-    <div class="ov-sub">
+    <div class="ov-sub" id="goNormalText">
       Ton nom rejoindra la pierre commémorative après ta chute face à <strong id="goAntag"></strong> à <strong id="goVillage"></strong>.<br>
       <span id="goBadges"></span> badges recueillis avant la fin.
+    </div>
+    <div class="ov-sub" id="goKageText" style="display:none">
+      Même le Kage tombe un jour. Tu as repoussé <strong id="goKageWaves"></strong> vague(s)
+      d'ennemis avant de céder — une défense légendaire.
     </div>
     <button class="btn-next-round" style="margin-top:24px" onclick="closeGameOver()">Recommencer</button>
   </div>
@@ -305,15 +333,28 @@
   </div>
 </div>
 
+<!-- Classement des parties (runs les plus longues de la session) -->
+<div class="overlay overlay-bg-dark" id="scoreboardOv" role="dialog" aria-modal="true" aria-labelledby="sbTitle">
+  <div class="ov-box wide scoreboard-box">
+    <div class="ov-title gold" id="sbTitle">🏆 Classement</div>
+    <div class="ov-sub">Les runs les plus longues de cette session (défense de Kage en priorité).</div>
+    <div class="sb-list" id="sbList"></div>
+    <button class="btn-next-round" onclick="closeScoreboard()">Fermer</button>
+  </div>
+</div>
+
 <!-- ── SCRIPTS — ordre d'exécution important ── -->
 <!-- Données statiques — aucune dépendance -->
 <script src="js/data.js"></script>
 <!-- Moteur de jeu (état, règles) — dépend de data.js -->
 <script src="js/engine.js"></script>
+<!-- Règles de butin DÉDIÉES au mode défense de Kage (25%/15%/0%) — dépend de data.js, engine.js -->
+<script src="js/kage-loot.js"></script>
 <!-- Moteur de dessin des roues — dépend de data.js -->
 <script src="js/wheel.js"></script>
 <!-- UI — dépend de data.js, engine.js, wheel.js -->
 <script src="js/ui/ui-core.js"></script>
+<script src="js/ui/ui-audio.js"></script>
 <script src="js/ui/ui-svg.js"></script>
 <script src="js/ui/ui-hud.js"></script>
 <script src="js/ui/ui-village.js"></script>
@@ -326,9 +367,12 @@
   function confirmRestart() {
     if (confirm("Recommencer une nouvelle partie ? Ta progression sera perdue.")) {
       document.body.classList.remove('in-game');
+      Engine.recordRun();
+      Engine.deleteSaveGame();
       Engine.fullReset();
       resetVillageSelection();
       buildVillageScreen();
+      updateResumeButton();
       showScreen("screenVillage");
     }
   }

@@ -39,6 +39,12 @@
 .rank-caption { font-size: 14px; color: var(--text-muted); margin-top: 8px; }
 .rank-caption strong { color: var(--text); }
 
+/* ── DÉFENSE DE KAGE (mode sans fin, remplace la progression de rang) ── */
+.hud-kage-defense { display: flex; align-items: center; gap: 16px; }
+.kdh-icon { font-size: 40px; flex-shrink: 0; animation: kfl 2.5s ease-in-out infinite; }
+.kdh-count { font-size: 14px; color: var(--text-muted); margin-top: 8px; }
+.kdh-count strong { color: var(--gold-light); font-size: 18px; }
+
 /* ── PORTRAIT (personnage joué / adversaire du round) ──
    Boîte partagée entre la sidebar gauche (personnage) et la sidebar droite
    (adversaire) — voir ui-hud.js → updatePersoPortrait() et ui-recap.js →
