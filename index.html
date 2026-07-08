@@ -47,6 +47,11 @@
       <div class="h-line" aria-hidden="true"></div>
     </header>
 
+    <!-- Visible uniquement si une sauvegarde existe (voir ui-village.js → updateResumeButton()) -->
+    <button class="period-confirm" id="resumeBtn" style="display:none;margin-bottom:18px;" onclick="resumeSavedGame()" aria-label="Reprendre la partie sauvegardée">
+      💾 Reprendre la partie en cours →
+    </button>
+
     <p class="period-intro">
       Tout ninja part du rang Genin. Choisis le village qui t'a formé —
       ce choix restera le même pour toute la partie.
